@@ -18,7 +18,7 @@ void yyerror(const char * s);
  * - T_DECOR: A string with one of the decor type values.
  * - T_TYPE: A string with one type identifier.
 */
-%token <string> T_IDENT T_NUMERIC T_DECOR T_TYPE
+%token <string> T_IDENTIFIER T_FLOAT T_DECOR T_TYPE
 
 
 /* Terminal utility tokens
@@ -26,8 +26,10 @@ void yyerror(const char * s);
  * - RPAR == )
  * - LBRA == {
  * - RBRA == }
+ * - IF   == if
+ * - ELSE == else
 */
-%token <token> T_LPAR T_RPAR T_LBRA T_RBRA
+%token <token> T_LPAR T_RPAR T_LBRA T_RBRA T_IF T_THEN T_ELSE
 
 
 /* Terminal assignment token
@@ -76,6 +78,11 @@ void yyerror(const char * s);
 %left <token> T_IM T_ID
 
 
+/* Interval construction is non associative
+*/
+%nonassoc <token> T_ICONSTRUCT
+
+
 /** Floating point arithmetic operators with rounding setting
  * - A? == add
  * - S? == subtract
@@ -87,42 +94,120 @@ void yyerror(const char * s);
 */
 %left <token> T_FAN T_FAD T_FAU T_FSN T_FSD T_FSU
 %left <token> T_FMN T_FMD T_FMU T_FDN T_FDD T_FDU
+
+
+/* Interval bound query operators are non associative
+*/
+%nonassoc <token> T_IUB T_ILB
+
+
+/* Decoration operators
+*/
+%nonassoc <token> T_IDE T_IUD T_IGD
 %%
 /* --- Terminal values --- ---------------------------------------------------*/
-/* Grammar rule to match an identifier */
-b_ident : T_IDENT { $$ = new Identifier($1); }
-				;
-/* Rule to match a numeric (float) value */
-b_numeric : T_NUMERIC { $$ = new Numeric($1); }
-					;
-/* Rule to match a decor value */
-b_decor : T_DECOR { $$ = new Decor($1); }
-				;
+/* Grammar rule to match an identifier
+*/
+identifier : T_IDENTIFIER
+           { $$ = new Identifier($1); }
+           ;
 
-b_operation : b_expr b_binary_operator b_expr { $$ = new Operation($1,$2,$3); }
 
-b_iconstruct : b_expr T_ICONSTRUCT b_expr { $$ = new Interval($1, $3);    }
-						 |        T_ICONSTRUCT b_expr { $$ = new Interval(false, $2); }
-             | b_expr T_ICONSTRUCT        { $$ = new Interval($1, false); }
-						 ;
-b_assign : b_ident '::' b_ident '=' b_expr { $$ = new Assignment($1,$2,$3); }
-				 ;
-b_if : 'if' '(' b_expr ')' b_expr 'else' b_expr { $$ = new If($3,$5,$7); }
-		 ;
+/* Rule to match a numeric (float) value
+*/
+numeric : T_FLOAT
+        { $$ = new Numeric($1); }
+        ;
 
-b_block : '{' b_expr_list '}' { $$ = $2; }
-				;
-b_expr_list : b_expr { $$ = new Block($1); }
-						| b_expr_list ';' b_expr { $1->expressions.addLast($3); }
+
+/* Rule to match a decor value
+*/
+decor : T_DECOR
+      { $$ = new Decor($1); }
+      ;
+
+/* Rule to match a type identifier
+*/
+type : T_TYPE
+     { $$ = new TypeIdentifier($1); }
+     ;
+
+
+/* --- Operators --- ---------------------------------------------------------*/
+unary_operator : T_IUB | T_ILB | T_IUD | T_IGD | T_ICONSTRUCT
+               ;
+
+
+binary_operator : T_FAN | T_FAD | T_FAU
+                | T_FSN | T_FSD | T_FSU
+                | T_FMN | T_FMD | T_FMU
+                | T_FDN | T_FDD | T_FDU
+                | T_ICONSTRUCT
+                | T_FEQ | T_FNE | T_FLT | T_FLE | T_FGT | T_FGE
+                | T_IA | T_IS | T_IM | T_ID
+                | T_IEQ | T_INE
+                | T_ISI | T_ISS | T_IWI | T_ISW
+                | T_ILT | T_ILE | T_IGT | T_IGE
+                | T_IALT | T_IALE | T_IAGT | T_IAGE
+                ;
+
+
+/* --- Operations --- --------------------------------------------------------*/
+unary_operation : unary_operator expression
+                { $$ = new UnaryOperation($1,$2); }
+                ;
+
+
+binary_operation : expression binary_operator expression
+                 { $$ = new BinaryOperation($2,$1,$3); }
+                 ;
+
+
+operation : unary_operation | binary_operation
+          ;
+
+
+/* --- Conditionals --- ------------------------------------------------------*/
+conditional : T_IF expression T_THEN expression T_ELSE expression
+            { $$ = new Conditional($2,$4,$6); }
             ;
 
-b_expr : b_ident { $$ = $1; }
-			 | b_numeric { $$ = $1; }
-       | b_iconstruct { $$ = $1; }
-       | b_assign { $$ = $1; }
-       | b_if { $$ = $1; }
-       | b_block { $$ = $1; }
-       | '(' b_expr ')' { $$ = $2; }
+
+/* --- Declarations --- ------------------------------------------------------*/
+declaration : identifier type T_ASSIGN expression
+            { $$ = new Declaration($2,$1,$4); }
+            ;
+
+
+/* --- Calls --- -------------------------------------------------------------*/
+call : identifier
+     { $$ = new Call($1); }
+     ;
+
+
+/* --- Blocks --- ------------------------------------------------------------*/
+block : T_LBRA expression_list T_RBRA
+      { $$ = $2; }
+      ;
+
+
+expression_list : expression
+                { $$ = new Block(); $$->add_expression($1); }
+                | expression_list T_LSEP expression
+                { $1->add_expression($3); }
+                ;
+
+/* --- Expressions --- -------------------------------------------------------*/
+expression : numeric | decor | operation | conditional
+           | declaration | call
+           | block
+           | subexpression
+           ;
+
+
+subexpression : T_LPAR expression T_RPAR
+              { $$ = $2; }
+              ;
 
 %%
 
