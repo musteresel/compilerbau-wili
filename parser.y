@@ -1,15 +1,40 @@
 %{
 #include "node.hpp"
 extern int yylex();
-void yyerror(const char * s);
+void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
+
+Block * program_block;
 %}
 
 %union {
   Expr * expression;
   Identifier * identifier;
+  TypeIdentifier * typeidentifier;
+  Block * block;
+  UnaryOperation * uop;
+  BinaryOperation * bop;
+  Call * call;
+  Conditional * conditional;
+  Declaration * declaration;
+  Numeric * numeric;
+  Decor * decor;
   std::string * string;
   int token;
 }
+
+%type <token> unary_operator binary_operator
+%type <expression> expression subexpression operation
+%type <block> program block expression_list
+%type <identifier> identifier
+%type <typeidentifier> type
+%type <numeric> numeric
+%type <decor> decor
+%type <uop> unary_operation
+%type <bop> binary_operation
+%type <call> call
+%type <declaration> declaration
+%type <conditional> conditional
+
 
 
 /* Terminal string tokens
@@ -28,8 +53,9 @@ void yyerror(const char * s);
  * - RBRA == }
  * - IF   == if
  * - ELSE == else
+ * - LSEP == ;
 */
-%token <token> T_LPAR T_RPAR T_LBRA T_RBRA T_IF T_THEN T_ELSE
+%token <token> T_LPAR T_RPAR T_LBRA T_RBRA T_IF T_THEN T_ELSE T_LSEP
 
 
 /* Terminal assignment token
@@ -104,7 +130,14 @@ void yyerror(const char * s);
 /* Decoration operators
 */
 %nonassoc <token> T_IDE T_IUD T_IGD
+
+%start program
 %%
+program : expression_list
+        { program_block = $1; }
+        ;
+
+
 /* --- Terminal values --- ---------------------------------------------------*/
 /* Grammar rule to match an identifier
 */
@@ -163,7 +196,10 @@ binary_operation : expression binary_operator expression
                  ;
 
 
-operation : unary_operation | binary_operation
+operation : unary_operation
+          { $$ = $1; }
+          | binary_operation
+          { $$ = $1; }
           ;
 
 
@@ -198,9 +234,13 @@ expression_list : expression
                 ;
 
 /* --- Expressions --- -------------------------------------------------------*/
-expression : numeric | decor | operation | conditional
-           | declaration | call
-           | block
+expression : numeric { $$ = $1; }
+           | decor {$$ = $1; }
+           | operation {$$ = $1; }
+           | conditional { $$ = $1; }
+           | declaration { $$ = $1; }
+           | call { $$ = $1; }
+           | block { $$ = $1; }
            | subexpression
            ;
 

@@ -1,10 +1,11 @@
 %{
 #include <iostream>
 #include <string>
-
+#include "node.hpp"
+#include "parser.hpp"
 
 #define TOKEN_TERMINAL(ret) { \
-  if (flex_debug) std::cout << "Found token " ## ret << std::endl; \
+  if (flex_debug) std::cout << "Found token " #ret << std::endl; \
   yylval.token = ret; \
   return ret; \
   }
@@ -13,13 +14,16 @@
   if (flex_debug) std::cout << "Found terminal \"" << yylval.string << "\"" << std::endl; \
   return ret; \
   }
-#define YY_DECL extern "C" int yylex()
+extern "C" int yywrap() { }
+
 int linenum = 1;
 char flex_debug = 0;
 %}
 %%
 [ \t]                                  ;
 \n                                     ++linenum;
+
+;                                      TOKEN_TERMINAL(T_LSEP);
 
 ><                                     TOKEN_TERMINAL(T_ICONSTRUCT);
 
@@ -38,8 +42,8 @@ char flex_debug = 0;
 
 ==                                     TOKEN_TERMINAL(T_FEQ);
 !=                                     TOKEN_TERMINAL(T_FNE);
-<                                      TOKEN_TERMINAL(T_FLT);
-<=                                     TOKEN_TERMINAL(T_FLE);
+\<                                      TOKEN_TERMINAL(T_FLT);
+\<=                                     TOKEN_TERMINAL(T_FLE);
 >                                      TOKEN_TERMINAL(T_FGT);
 >=                                     TOKEN_TERMINAL(T_FGE);
 
@@ -86,8 +90,8 @@ COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 
 .                                      ;
 %%
-int main(int argc, char** argv)
+/*int main(int argc, char** argv)
 {
   yylex();
-}
+}*/
 

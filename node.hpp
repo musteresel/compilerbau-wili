@@ -1,28 +1,7 @@
-
-
-enum OperatorType
-{
-	F_ADD_N, F_ADD_U, F_ADD_D,
-	F_SUB_N, F_SUB_U, F_SUB_D,
-	F_MUL_N, F_MUL_U, F_MUL_D,
-	F_DIV_N, F_DIV_U, F_DIV_D,
-
-	F_EQ, F_NE, F_LE, F_LT, F_GE, F_GT
-
-	I_ADD, I_SUB, I_MUL, I_DIV,
-
-	I_E, I_NE,
-	I_S, I_SS, I_SU, I_SSU,
-	I_L, I_LE, I_G, I_GE,
-	I_AL, I_ALE, I_AG, I_AGE,
-
-	I_CONSTRUCT,
-	I_DECOR,
-
-	I_UNDECOR, I_GETDECOR
-};
-
-
+#include <iostream>
+#include <string>
+#include <memory>
+#include <list>
 
 class Expr
 {
@@ -30,40 +9,149 @@ class Expr
 		virtual ~Expr();
 };
 
+
+
+class Identifier
+{
+	public:
+		std::unique_ptr<std::string const> name;
+
+		Identifier(std::string const * const text)
+			: name(text)
+		{
+			std::cout << "[CREATE] Identifier \"" << *name << "\"" << std::endl;
+		}
+};
+
+class Numeric : public Expr
+{
+	public:
+		double value;
+
+		Numeric(std::string const * const text)
+		{
+			value = std::stod(*text);
+			std::cout << "[CREATE] Numeric " << value << std::endl;
+		}
+};
+
+class Decor : public Expr
+{
+	public:
+		std::unique_ptr<std::string const> value;
+
+		Decor(std::string const * const text)
+			: value(text)
+		{
+			std::cout << "[CREATE] Decor \"" << *value << "\"" << std::endl;
+		}
+};
+
+class TypeIdentifier
+{
+	public:
+		std::unique_ptr<std::string const> name;
+
+		TypeIdentifier(std::string const * const text)
+			: name(text)
+		{
+			std::cout << "[CREATE] TypeIdentifier " << *name << std::endl;
+		}
+};
+
+
+class UnaryOperation : public Expr
+{
+	public:
+		int op;
+		std::unique_ptr<Expr const> expression;
+
+		UnaryOperation(int o, Expr const * const e)
+			: op(o), expression(e)
+		{
+			std::cout << "[CREATE] Unary operation #" << op << std::endl;
+		}
+};
+
+class BinaryOperation : public Expr
+{
+	public:
+		int op;
+		std::unique_ptr<Expr const> lhs;
+		std::unique_ptr<Expr const> rhs;
+
+		BinaryOperation(
+				int o,
+				Expr const * const l,
+				Expr const * const r)
+			: op(o), lhs(l), rhs(r)
+		{
+			std::cout << "[CREATE] Binary operation #" << op << std::endl;
+		}
+};
+
+class Conditional : public Expr
+{
+	public:
+		std::unique_ptr<Expr const> condition;
+		std::unique_ptr<Expr const> truecase;
+		std::unique_ptr<Expr const> falsecase;
+
+		Conditional(
+				Expr const * const c,
+				Expr const * const t,
+				Expr const * const f)
+			: condition(c), truecase(t), falsecase(f)
+		{
+			std::cout << "[CREATE] Conditional" << std::endl;
+		}
+};
+
+class Declaration : public Expr
+{
+	public:
+		std::unique_ptr<Identifier const> id;
+		std::unique_ptr<TypeIdentifier const> typeidentifier;
+		std::unique_ptr<Expr const> value;
+
+		Declaration(
+				TypeIdentifier const * const t,
+				Identifier const * const i,
+				Expr const * const v)
+			: id(i), typeidentifier(t), value(v)
+		{
+			std::cout << "[CREATE] Declaration of " << *(id->name) << std::endl;
+		}
+};
+
+class Call : public Expr
+{
+	public:
+		std::unique_ptr<Identifier const> name;
+
+		Call(Identifier const * const n)
+			: name(n)
+		{
+			std::cout << "[CREATE] Call for " << *(name->name) << std::endl;
+		}
+};
+
+
 class Block : public Expr
 {
 	public:
-		std::list<Expr> const expressions;
-};
+		std::list<std::unique_ptr<Expr const>> expressions;
 
-class If : public Expr
-{
-	public:
-		Expr const * const condition;
-		Expr const * const ifblock;
-		Expr const * const elseblock;
-};
+		Block()
+		{
+			std::cout << "[CREATE] Block" << std::endl;
+		}
 
-class Assignment : public Expr
-{
-	public:
-		Identifier const * const type;
-		Identifier const * const name;
-		Expr const * const value;
-};
-
-class Identifier : public Expr
-{
-	public:
-		std::unique_ptr<std::string> const name;
-};
-
-class Operator : public Expr
-{
-	public:
-		Expr const * const left;
-		Expr const * const right;
-		OperatorType operator;
+		void add_expression(Expr const * const e)
+		{
+			expressions.emplace_back(e);
+			std::cout << "--Block: Size = " << expressions.size() << std::endl;
+		}
 };
 
 
