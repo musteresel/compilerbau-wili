@@ -1,29 +1,76 @@
+/* We scan only a single file at once */
+%option noyywrap
+
+
 %{
+/* Needed to act on cerr */
 #include <iostream>
+
+
+/* Needed to create new strings */ 
 #include <string>
-#include "node.hpp"
+
+
+/* Needed to create ast nodes */
+#include "ast.hpp"
+
+
+/* Needed for token definitions */
 #include "parser.hpp"
 
+
+/** Macro for code when a terminal token is found.
+ *
+ * ret is the tokens define name.
+*/
 #define TOKEN_TERMINAL(ret) { \
-  if (flex_debug) std::cout << "Found token " #ret << std::endl; \
+  if (flex_debug) \
+  { \
+    std::cerr << "[LEX] " #ret << std::endl; \
+  } \
   yylval.token = ret; \
   return ret; \
   }
+
+
+/** Macro for code when a string terminal is found.
+ *
+ * ret is the token code to return. The string is saved to yylval.
+*/
 #define STRING_TERMINAL(ret) { \
 	yylval.string = new std::string(yytext, yyleng); \
-  if (flex_debug) std::cout << "Found terminal \"" << yylval.string << "\"" << std::endl; \
+  if (flex_debug) \
+  { \
+    std::cerr << "[LEX] " #ret ": \"" << *yylval.string << "\"" << std::endl; \
+  } \
   return ret; \
   }
-extern "C" int yywrap() { }
 
+
+/** Line counting
+ *
+ * This variable is increased whenever a newline is encountered.
+*/
 int linenum = 1;
-char flex_debug = 0;
+
+
+/** Debug control
+ *
+ * When set to nonzero, debug output will be printed to cerr.
+*/
+char flex_debug = 1;
 %}
+
+
 %%
 [ \t]                                  ;
 \n                                     ++linenum;
 
 ;                                      TOKEN_TERMINAL(T_LSEP);
+\{                                     TOKEN_TERMINAL(T_LBRA);
+\}                                     TOKEN_TERMINAL(T_RBRA);
+\(                                     TOKEN_TERMINAL(T_LPAR);
+\)                                     TOKEN_TERMINAL(T_RPAR);
 
 ><                                     TOKEN_TERMINAL(T_ICONSTRUCT);
 
@@ -93,9 +140,9 @@ COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [a-zA-Z_][a-zA-Z0-9_]*                 STRING_TERMINAL(T_IDENTIFIER);
 
 .                                      ;
+
+
 %%
-/*int main(int argc, char** argv)
-{
-  yylex();
-}*/
+/* Nothing here */
+
 

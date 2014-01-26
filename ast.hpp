@@ -1,3 +1,7 @@
+#ifndef WILI_AST_HEADER
+#define WILI_AST_HEADER 1
+
+
 #include <iostream>
 #include <string>
 #include <memory>
@@ -154,4 +158,5 @@ class Block : public Expr
 		}
 };
 
+#endif
 

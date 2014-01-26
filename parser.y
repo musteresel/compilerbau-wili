@@ -1,5 +1,5 @@
 %{
-#include "node.hpp"
+#include "ast.hpp"
 extern int yylex();
 void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
@@ -22,20 +22,6 @@ Block * program_block;
   int token;
 }
 
-%type <token> unary_operator binary_operator
-%type <expression> expression subexpression operation
-%type <block> program block expression_list
-%type <identifier> identifier
-%type <typeidentifier> type
-%type <numeric> numeric
-%type <decor> decor
-%type <uop> unary_operation
-%type <bop> binary_operation
-%type <call> call
-%type <declaration> declaration
-%type <conditional> conditional
-
-
 
 /* Terminal string tokens
  * - T_IDENT: A string containing an identifier.
@@ -43,7 +29,7 @@ Block * program_block;
  * - T_DECOR: A string with one of the decor type values.
  * - T_TYPE: A string with one type identifier.
 */
-%token <string> T_IDENTIFIER T_FLOAT T_DECOR T_TYPE
+%token <string> T_IDENTIFIER T_FLOAT T_DECOR T_TYPE T_TRUE T_FALSE
 
 
 /* Terminal utility tokens
@@ -62,6 +48,7 @@ Block * program_block;
 */
 %right <token> T_ASSIGN
 
+%nonassoc CONDITIONAL
 
 /* Interval comparision operators
  * - EQ == equal
@@ -100,8 +87,8 @@ Block * program_block;
  * - M == multiply
  * - D == divide
 */
-%left <token> T_IA T_IS
-%left <token> T_IM T_ID
+%left <token> T_IA T_IS IVAL_ADDSUB
+%left <token> T_IM T_ID IVAL_MULDIV
 
 
 /* Interval construction is non associative
@@ -118,260 +105,146 @@ Block * program_block;
  * - ?D == round to next lower number (down)
  * - ?U == round to next higher number (up)
 */
-%left <token> T_FAN T_FAD T_FAU T_FSN T_FSD T_FSU
-%left <token> T_FMN T_FMD T_FMU T_FDN T_FDD T_FDU
+%left <token> T_FAN T_FAD T_FAU T_FSN T_FSD T_FSU NUM_ADDSUB
+%left <token> T_FMN T_FMD T_FMU T_FDN T_FDD T_FDU NUM_MULDIV
 
 
 /* Interval bound query operators are non associative
 */
-%nonassoc <token> T_IUB T_ILB
+%nonassoc <token> T_IUB T_ILB IVAL_BOUND
 
 
 /* Decoration operators
 */
 %nonassoc <token> T_IDE T_IUD T_IGD
 
-%start program
+
+%left <token> T_AND T_OR BOOL_ANDOR
+%right <token> T_NOT
+
+%start expr
 %%
-program : expression_list
-        { program_block = $1; }
-        ;
 
 
-
-/*
-level00 : T_LBRA level01 T_RBRA 
-          { $$ = $2; }
-        ;
-level01 : level02 
-          { $$ = new Block(); $$->add_expression($1); }
-        | level01 T_LSEP level02 
-          { $1->add_expression($1); }
-        ;
-level02 : identifier T_TYPED type T_ASSIGN level03
-          { $$ = new Declaration($3,$1,$5); }
-        | level03
-        ;
-level03 : T_IF level03 T_THEN level03 T_ELSE level03
-          { $$ = new Conditional($2,$4,$6); }
-        | level04
-        ;
-level04 : level04 binary_bool level05
-          { $$ = new BinaryOperator($2,$1,$3); }
-        | level05
-        ;
-level05 : unary_bool level06
-          { $$ = new UnaryOperator($1,$2); }
-        | level06
-        ;
-level06 : level06 compare level07
-          { $$ = new BinaryOperator($2,$1,$3); }
-        | level07
-        ;
-level07 : level07 T_IA level08
-
-
-
-
 
-lvl0 : block | expression_list | lvl1;
-lvl1 : assignment | lvl2;
-
+expr : bool_expr
+		 | num_expr
+     | ival_expr
+     | decor_expr
+;
 
 
-/* Assignments */
-lvl0 : identifier type T_ASSIGN lvl1
-     { $$ = new Declaration($2,$1,$4); }
-     | lvl1
-     ;
+bool_expr : num_expr num_compare num_expr
+					| ival_expr ival_compare ival_expr
+          | bool_expr bool_andor bool_expr %prec BOOL_ANDOR
+          | T_NOT bool_expr
+          | T_IF bool_expr T_THEN bool_expr T_ELSE bool_expr %prec CONDITIONAL
+          | T_LPAR bool_expr T_RPAR
+          | T_LBRA bool_termseq T_RBRA
+          | bool_literal
+;
 
-/* Compare operations */
-lvl1 : lvl1 lvl1_binary lvl2
-     { $$ = new BinaryOperation($2,$1,$3); }
-     | lvl2
-     ;
-lvl1_binary : T_IEQ | T_INE | T_ISI | T_ISS | T_IWI | T_ISW 
-            | T_ILT | T_ILE | T_IGT | T_IGE 
-            | T_IALT | T_IALE | T_IAGT | T_IAGE
-            | T_FEQ | T_FNE | T_FGT | T_FGE | T_FLT | T_FLE
-            ;
 
-/* Binary interval arithmetic */
-lvl2 : lvl2 lvl2_binary lvl3
-     { $$ = new BinaryOperation($2,$1,$3); }
-     | lvl3
-     ;
-lvl2_binary : T_IA | T_IS | T_IM | T_ID
-            ;
+num_expr : num_expr num_addsub num_expr %prec NUM_ADDSUB
+				 | num_expr num_muldiv num_expr %prec NUM_MULDIV
+         | ival_bound ival_expr %prec IVAL_BOUND
+         | T_IF bool_expr T_THEN num_expr T_ELSE num_expr %prec CONDITIONAL
+         | T_LPAR num_expr T_RPAR
+         | T_LBRA num_termseq T_RBRA
+         | num_literal
+;
 
-/* Unary interval arithmetic */
-lvl3 : T_IS lvl3
-     { $$ = new UnaryOperation($1,$2); }
-     ;
 
-/* 
-lvl3 : lvl3 T_ICONSTRUCT lvl4
-     { $$ = new BinaryOperation($2,$1,$3); }
-     | lvl4
+decor_expr : T_IGD ival_expr
+					 | T_IF bool_expr T_THEN decor_expr T_ELSE decor_expr
+           | T_LPAR decor_expr T_RPAR
+           | T_LBRA decor_termseq T_RBRA
+					 | decor_literal
+;
 
 
+ival_expr : ival_expr ival_addsub ival_expr %prec IVAL_ADDSUB
+					| ival_expr ival_muldiv ival_expr %prec IVAL_MULDIV
+          | num_expr T_ICONSTRUCT num_expr
+          | T_ICONSTRUCT num_expr
+          | decor_expr T_IDE ival_expr
+          | T_IUD ival_expr
+          | T_IF bool_expr T_THEN ival_expr T_ELSE ival_expr %prec CONDITIONAL
+          | T_LPAR ival_expr T_RPAR
+          | T_LBRA ival_termseq T_RBRA
+;
 
 
+bool_termseq : expr_seq bool_expr
+;
 
 
+num_termseq : expr_seq num_expr
+;
 
-/* --- Terminal values --- ---------------------------------------------------*/
-/* Grammar rule to match an identifier
-*/
-identifier : T_IDENTIFIER
-           { $$ = new Identifier($1); }
-           ;
 
+decor_termseq : expr_seq decor_expr
+;
 
-/* Rule to match a numeric (float) value
-*/
-numeric : T_FLOAT
-        { $$ = new Numeric($1); }
-        ;
 
+ival_termseq : expr_seq ival_expr
+;
 
-/* Rule to match a decor value
-*/
-decor : T_DECOR
-      { $$ = new Decor($1); }
-      ;
 
-/* Rule to match a type identifier
-*/
-type : T_TYPE
-     { $$ = new TypeIdentifier($1); }
-     ;
+expr_seq : /* empty */
+				 | expr_seq expr T_LSEP
+;
 
 
-/* --- Operators --- ---------------------------------------------------------*/
-unary_operator : T_IUB | T_ILB | T_IUD | T_IGD | T_ICONSTRUCT
-               ;
-
-
-binary_operator : T_FAN | T_FAD | T_FAU
-                | T_FSN | T_FSD | T_FSU
-                | T_FMN | T_FMD | T_FMU
-                | T_FDN | T_FDD | T_FDU
-                | T_ICONSTRUCT
-                | T_FEQ | T_FNE | T_FLT | T_FLE | T_FGT | T_FGE
-                | T_IA | T_IS | T_IM | T_ID
-                | T_IEQ | T_INE
-                | T_ISI | T_ISS | T_IWI | T_ISW
-                | T_ILT | T_ILE | T_IGT | T_IGE
-                | T_IALT | T_IALE | T_IAGT | T_IAGE
-                ;
+num_compare : T_FEQ | T_FNE | T_FLT | T_FLE | T_FGT | T_FGE
+;
 
 
-/* --- Operations --- --------------------------------------------------------*/
-unary_operation : unary_operator expression
-                { $$ = new UnaryOperation($1,$2); }
-                ;
+num_addsub : T_FAN | T_FAD | T_FAU
+					 | T_FSN | T_FSD | T_FSU
+;
 
 
-binary_operation : expression binary_operator expression
-                 { $$ = new BinaryOperation($2,$1,$3); }
-                 ;
+num_muldiv : T_FMN | T_FMD | T_FMU
+					 | T_FDN | T_FDD | T_FDU
+;
 
 
-operation : unary_operation
-          { $$ = $1; }
-          | binary_operation
-          { $$ = $1; }
-          ;
+ival_compare : T_IEQ | T_INE | T_ISI | T_ISS | T_IWI | T_ISW 
+             | T_ILT | T_ILE | T_IGT | T_IGE 
+             | T_IALT | T_IALE | T_IAGT | T_IAGE
+;
 
 
-/* --- Conditionals --- ------------------------------------------------------*/
-conditional : T_IF expression T_THEN expression T_ELSE expression
-            { $$ = new Conditional($2,$4,$6); }
-            ;
+ival_addsub : T_IA | T_IS
+;
 
 
-/* --- Declarations --- ------------------------------------------------------*/
-declaration : identifier type T_ASSIGN expression
-            { $$ = new Declaration($2,$1,$4); }
-            ;
+ival_muldiv : T_IM | T_ID
+;
 
 
-/* --- Calls --- -------------------------------------------------------------*/
-call : identifier
-     { $$ = new Call($1); }
-     ;
+ival_bound : T_IUB | T_ILB
+;
 
 
-/* --- Blocks --- ------------------------------------------------------------*/
-block : T_LBRA expression_list T_RBRA
-      { $$ = $2; }
-      ;
+bool_andor : T_AND | T_OR
+;
 
 
-expression_list : expression
-                { $$ = new Block(); $$->add_expression($1); }
-                | expression_list T_LSEP expression
-                { $1->add_expression($3); }
-                ;
+bool_literal : T_TRUE | T_FALSE
+;
 
-/* --- Expressions --- -------------------------------------------------------*/
-expression : numeric { $$ = $1; }
-           | decor {$$ = $1; }
-           | operation {$$ = $1; }
-           | conditional { $$ = $1; }
-           | declaration { $$ = $1; }
-           | call { $$ = $1; }
-           | block { $$ = $1; }
-           | subexpression
-           ;
 
+num_literal : T_FLOAT
+;
 
-subexpression : T_LPAR expression T_RPAR
-              { $$ = $2; }
-              ;
 
-expr : 
-  expr T_IA expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IS expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_ID expr { $$ = new BinaryOperation($2,$1,$3); }
-
-| expr T_FAN expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_FAD expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_FAU expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_FSN expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_FSD expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_FSU expr { $$ = new BinaryOperation($2,$1,$3); }
-
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+decor_literal : T_DECOR
+;
 
 
 %%
+/* empty */
+
 
