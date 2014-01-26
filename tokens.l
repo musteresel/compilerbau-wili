@@ -133,6 +133,8 @@ else                                   TOKEN_TERMINAL(T_ELSE);
 and                                    TOKEN_TERMINAL(T_AND);
 or                                     TOKEN_TERMINAL(T_OR);
 not                                    TOKEN_TERMINAL(T_NOT);
+true                                   TOKEN_TERMINAL(T_TRUE);
+false                                  TOKEN_TERMINAL(T_FALSE);
 
 ::(Decor|Float|(Decor)?Ival|Bool)      STRING_TERMINAL(T_TYPE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
