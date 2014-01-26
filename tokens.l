@@ -83,6 +83,10 @@ if                                     TOKEN_TERMINAL(T_IF);
 then                                   TOKEN_TERMINAL(T_THEN);
 else                                   TOKEN_TERMINAL(T_ELSE);
 
+and                                    TOKEN_TERMINAL(T_AND);
+or                                     TOKEN_TERMINAL(T_OR);
+not                                    TOKEN_TERMINAL(T_NOT);
+
 ::(Decor|Float|(Decor)?Ival|Bool)      STRING_TERMINAL(T_TYPE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [+-]?(([0-9]*(\.[0-9]+)?([eE][+-]?[0-9]+)?)|infinite) STRING_TERMINAL(T_FLOAT);

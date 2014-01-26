@@ -138,6 +138,88 @@ program : expression_list
         ;
 
 
+
+/*
+level00 : T_LBRA level01 T_RBRA 
+          { $$ = $2; }
+        ;
+level01 : level02 
+          { $$ = new Block(); $$->add_expression($1); }
+        | level01 T_LSEP level02 
+          { $1->add_expression($1); }
+        ;
+level02 : identifier T_TYPED type T_ASSIGN level03
+          { $$ = new Declaration($3,$1,$5); }
+        | level03
+        ;
+level03 : T_IF level03 T_THEN level03 T_ELSE level03
+          { $$ = new Conditional($2,$4,$6); }
+        | level04
+        ;
+level04 : level04 binary_bool level05
+          { $$ = new BinaryOperator($2,$1,$3); }
+        | level05
+        ;
+level05 : unary_bool level06
+          { $$ = new UnaryOperator($1,$2); }
+        | level06
+        ;
+level06 : level06 compare level07
+          { $$ = new BinaryOperator($2,$1,$3); }
+        | level07
+        ;
+level07 : level07 T_IA level08
+
+
+
+
+
+lvl0 : block | expression_list | lvl1;
+lvl1 : assignment | lvl2;
+
+
+
+/* Assignments */
+lvl0 : identifier type T_ASSIGN lvl1
+     { $$ = new Declaration($2,$1,$4); }
+     | lvl1
+     ;
+
+/* Compare operations */
+lvl1 : lvl1 lvl1_binary lvl2
+     { $$ = new BinaryOperation($2,$1,$3); }
+     | lvl2
+     ;
+lvl1_binary : T_IEQ | T_INE | T_ISI | T_ISS | T_IWI | T_ISW 
+            | T_ILT | T_ILE | T_IGT | T_IGE 
+            | T_IALT | T_IALE | T_IAGT | T_IAGE
+            | T_FEQ | T_FNE | T_FGT | T_FGE | T_FLT | T_FLE
+            ;
+
+/* Binary interval arithmetic */
+lvl2 : lvl2 lvl2_binary lvl3
+     { $$ = new BinaryOperation($2,$1,$3); }
+     | lvl3
+     ;
+lvl2_binary : T_IA | T_IS | T_IM | T_ID
+            ;
+
+/* Unary interval arithmetic */
+lvl3 : T_IS lvl3
+     { $$ = new UnaryOperation($1,$2); }
+     ;
+
+/* 
+lvl3 : lvl3 T_ICONSTRUCT lvl4
+     { $$ = new BinaryOperation($2,$1,$3); }
+     | lvl4
+
+
+
+
+
+
+
 /* --- Terminal values --- ---------------------------------------------------*/
 /* Grammar rule to match an identifier
 */
@@ -248,6 +330,48 @@ expression : numeric { $$ = $1; }
 subexpression : T_LPAR expression T_RPAR
               { $$ = $2; }
               ;
+
+expr : 
+  expr T_IA expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IS expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_ID expr { $$ = new BinaryOperation($2,$1,$3); }
+
+| expr T_FAN expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_FAD expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_FAU expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_FSN expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_FSD expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_FSU expr { $$ = new BinaryOperation($2,$1,$3); }
+
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+| expr T_IM expr { $$ = new BinaryOperation($2,$1,$3); }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 %%
 
