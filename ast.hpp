@@ -7,6 +7,16 @@
 #include <memory>
 #include <list>
 
+
+
+namespace ast
+{
+	int context_lookup(std::string const * const ident);
+	void context_init(void);
+}
+
+
+/*
 class Expr
 {
 	public:
@@ -157,6 +167,7 @@ class Block : public Expr
 			std::cout << "--Block: Size = " << expressions.size() << std::endl;
 		}
 };
+*/
 
 #endif
 

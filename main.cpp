@@ -1,14 +1,14 @@
 #include <iostream>
 #include "ast.hpp"
 
-extern Block * program_block;
 extern int yyparse();
+
 
 int main(int argc, char** argv)
 {
 	std::cout << "hi" << std::endl;
+	ast::context_init();
   yyparse();
-  std::cout << "Result: " << program_block << std::endl;
   return 0;
 }
 

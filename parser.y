@@ -3,21 +3,9 @@
 extern int yylex();
 void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
-Block * program_block;
 %}
 
 %union {
-  Expr * expression;
-  Identifier * identifier;
-  TypeIdentifier * typeidentifier;
-  Block * block;
-  UnaryOperation * uop;
-  BinaryOperation * bop;
-  Call * call;
-  Conditional * conditional;
-  Declaration * declaration;
-  Numeric * numeric;
-  Decor * decor;
   std::string * string;
   int token;
 }
@@ -122,6 +110,9 @@ Block * program_block;
 %left <token> T_AND T_OR BOOL_ANDOR
 %right <token> T_NOT
 
+%left <token> T_BOOL_CALL T_NUM_CALL T_DECOR_CALL T_IVAL_CALL
+
+
 %start expr
 %%
 
@@ -142,6 +133,8 @@ bool_expr : num_expr num_compare num_expr
           | T_LPAR bool_expr T_RPAR
           | T_LBRA bool_termseq T_RBRA
           | bool_literal
+          | T_IDENTIFIER {ast::context_startnew(T_BOOL_CALL,$1);} bool_expr
+          | T_BOOL_CALL
 ;
 
 
@@ -152,6 +145,8 @@ num_expr : num_expr num_addsub num_expr %prec NUM_ADDSUB
          | T_LPAR num_expr T_RPAR
          | T_LBRA num_termseq T_RBRA
          | num_literal
+         | T_IDENTIFIER T_ASSIGN num_expr
+         | T_NUM_CALL
 ;
 
 
@@ -160,6 +155,8 @@ decor_expr : T_IGD ival_expr
            | T_LPAR decor_expr T_RPAR
            | T_LBRA decor_termseq T_RBRA
 					 | decor_literal
+           | T_IDENTIFIER T_ASSIGN decor_expr
+           | T_DECOR_CALL
 ;
 
 
@@ -172,6 +169,8 @@ ival_expr : ival_expr ival_addsub ival_expr %prec IVAL_ADDSUB
           | T_IF bool_expr T_THEN ival_expr T_ELSE ival_expr %prec CONDITIONAL
           | T_LPAR ival_expr T_RPAR
           | T_LBRA ival_termseq T_RBRA
+          | T_IDENTIFIER T_ASSIGN ival_expr
+          | T_IVAL_CALL
 ;
 
 
@@ -242,6 +241,7 @@ num_literal : T_FLOAT
 
 decor_literal : T_DECOR
 ;
+
 
 
 %%

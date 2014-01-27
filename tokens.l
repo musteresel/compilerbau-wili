@@ -139,7 +139,27 @@ false                                  TOKEN_TERMINAL(T_FALSE);
 ::(Decor|Float|(Decor)?Ival|Bool)      STRING_TERMINAL(T_TYPE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [+-]?(([0-9]*(\.[0-9]+)?([eE][+-]?[0-9]+)?)|infinite) STRING_TERMINAL(T_FLOAT);
-[a-zA-Z_][a-zA-Z0-9_]*                 STRING_TERMINAL(T_IDENTIFIER);
+[a-zA-Z_][a-zA-Z0-9_]*                 {
+  std::string * ident = new std::string(yytext, yyleng);
+  int token_type = ast::context_lookup(ident);
+  if (flex_debug)
+  {
+    char const * msg;
+    switch (token_type)
+    {
+      case T_IDENTIFIER: msg = "T_IDENTIFIER"; break;
+      case T_BOOL_CALL: msg = "T_BOOL_CALL"; break;
+      case T_NUM_CALL: msg = "T_NUM_CALL"; break;
+      case T_DECOR_CALL: msg = "T_DECOR_CALL"; break;
+      case T_IVAL_CALL: msg = "T_IVAL_CALL"; break;
+      default: msg = "shit just got real"; break;
+    }
+    std::cerr << "[LEX] " << msg << ": \"" << *ident << "\"" << std::endl;
+  }
+  yylval.string = ident;
+  return token_type;
+}
+STRING_TERMINAL(T_IDENTIFIER);
 
 .                                      ;
 
