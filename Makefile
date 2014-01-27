@@ -11,6 +11,6 @@ parser.cpp parser.hpp parser.output: parser.y ast.hpp
 tokens.cpp: tokens.l parser.hpp ast.hpp
 	flex -o tokens.cpp tokens.l
 
-clean: wili parser.cpp parser.hpp parser.output tokens.cpp
-	rm $^
+clean:
+	rm wili parser.cpp parser.hpp parser.output tokens.cpp || true
 

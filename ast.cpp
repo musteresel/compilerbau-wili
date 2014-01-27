@@ -4,6 +4,29 @@
 #include <unordered_map>
 #include <string>
 
+/*
+ * T_IDENTIFIER { 
+ *   ast::context_register(T_BOOL, $1);
+ *   ast::context_disallow($1);
+ *   }
+ * T_ASSIGN
+ * bool_expr {
+ *   ast::context_reallow($1);
+ *   }
+ *
+ * fctname -> disallow usage, (register as "in progress" ?)
+ * paramname -> register in new context with correct type
+ *
+ * decl a = 5;
+ * decl b = 4;
+ * decl fun = {
+ * 	decl a = 3;
+ * 	a / b
+ * 	}
+ *
+ *
+ * */
+
 
 namespace ast
 {
@@ -27,6 +50,8 @@ namespace ast
 		return T_IDENTIFIER;
 	}
 }
+
+
 
 /*
  * ID PARM1::Type = ...
