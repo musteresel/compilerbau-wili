@@ -37,7 +37,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
  * - T_DECOR: A string with one of the decor type values.
  * - T_TYPE: A string with one type identifier.
 */
-%token <string> T_IDENTIFIER T_FLOAT T_DECOR T_TYPE T_TRUE T_FALSE
+%token <string> T_IDENTIFIER T_FLOAT T_DECOR T_TYPE T_DECLNAME
 
 
 /* Terminal utility tokens
@@ -50,6 +50,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
  * - LSEP == ;
 */
 %token <token> T_LPAR T_RPAR T_LBRA T_RBRA T_IF T_THEN T_ELSE T_LSEP
+%token <token> T_TRUE T_FALSE T_DECL
 
 
 /* Terminal assignment token
@@ -57,6 +58,8 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 %right <token> T_ASSIGN
 
 %nonassoc CONDITIONAL
+%nonassoc CALL
+%nonassoc EXPR
 
 /* Interval comparision operators
  * - EQ == equal
@@ -130,7 +133,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 %left <token> T_AND T_OR BOOL_ANDOR
 %right <token> T_NOT
 
-%left <token> T_BOOL_CALL T_NUM_CALL T_DECOR_CALL T_IVAL_CALL
+%left <string> T_BOOL_CALL T_NUM_CALL T_DECOR_CALL T_IVAL_CALL
 
 
 %start expr
@@ -138,10 +141,10 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
 
 
-expr : bool_expr
-     | num_expr
-     | ival_expr
-     | decor_expr
+expr : bool_expr %prec EXPR
+     | num_expr %prec EXPR
+     | ival_expr %prec EXPR
+     | decor_expr %prec EXPR
 ;
 
 
@@ -160,10 +163,25 @@ bool_expr :
           | T_LBRA bool_termseq T_RBRA
 { $$ = $2; }
           | bool_literal
-          | T_IDENTIFIER T_ASSIGN bool_expr
-{ std::cout << "bool ident " << $1 << " assigned!" << std::endl; }
+          | declaration declseq assignment bool_expr 
+{ std::cout << "end assign" << std::endl; }
+          | T_BOOL_CALL exprlist { std::cout << "calling " << *$1 << std::endl; }
 ;
 
+declaration : T_DECL { ast::declaration = true; }
+;
+
+assignment : T_ASSIGN { ast::declaration = false; }
+
+exprlist :
+
+         | exprlist expr %prec CALL
+;
+
+declseq :
+          T_DECLNAME { std::cout << "Declare: " << *$1 << std::endl; }
+        | declseq T_DECLNAME { std::cout << "  Param: " << *$2 << std::endl; }
+;
 
 num_expr :
           num_expr num_addsub num_expr %prec NUM_ADDSUB
@@ -178,8 +196,7 @@ num_expr :
          | T_LBRA num_termseq T_RBRA
 { $$ = $2; }
          | num_literal
-          | T_IDENTIFIER  T_ASSIGN num_expr
-{ std::cout << "num ident " << $1 << " assigned!" << std::endl; }
+          | declaration declseq assignment num_expr
 ;
 
 

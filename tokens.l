@@ -136,6 +136,8 @@ not                                    TOKEN_TERMINAL(T_NOT);
 true                                   TOKEN_TERMINAL(T_TRUE);
 false                                  TOKEN_TERMINAL(T_FALSE);
 
+delcare                                TOKEN_TERMINAL(T_DECL);
+
 ::(Decor|Float|(Decor)?Ival|Bool)      STRING_TERMINAL(T_TYPE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [+-]?(([0-9]*(\.[0-9]+)?([eE][+-]?[0-9]+)?)|infinite) STRING_TERMINAL(T_FLOAT);
