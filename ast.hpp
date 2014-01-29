@@ -9,22 +9,74 @@
 
 namespace ast
 {
-  template<typename T, typename... ARGS> T * create(ARGS... args)
-  {
-    T * node = new T(args...);
-    std::cerr << "[AST] " << typeid(T).name() << std::endl;
-    return node;
-  }
+  class expr;
+  using expr_ptr = std::unique_ptr<expr const>;
+  using string_ptr = std::unique_ptr<std::string const>;
+  using expr_list_ptr = std::unique_ptr<std::list<expr_ptr>>;
 }
-
 
 
 namespace ast
 {
-  int context_lookup(std::string const * const ident);
-  void context_init(void);
+  void begin_declaration(void);
+  void end_declaration(void);
+  bool in_declaration(void);
 }
 
+
+namespace ast
+{
+  template<typename T, typename... ARGS> expr_ptr create(ARGS... args)
+  {
+    T * node = new T(args...);
+    std::cerr << "[AST] " << typeid(T).name() << std::endl;
+    return expr_ptr(node);
+  }
+}
+
+
+namespace ast
+{
+  class expr
+  {
+    public:
+      virtual ~expr() {};
+  };
+  class group : public expr
+  {
+    protected:
+      expr_ptr expression;
+    public:
+      group(expr_ptr e)
+        : expression(std::move(e))
+      {}
+  };
+  class unary : public expr
+  {
+    protected:
+      expr_ptr expression;
+      int op;
+    public:
+      unary(int o, expr_ptr e)
+        : op(o), expression(std::move(e))
+      {}
+  };
+  class binary : public expr
+  {
+    protected:
+      expr_ptr lhs;
+      expr_ptr rhs;
+      int op;
+    public:
+      binary(int o, expr_ptr l, expr_ptr r)
+        : op(o), lhs(std::move(l)), rhs(std::move(r))
+      {}
+  };
+  
+}
+
+
+/*
 
 namespace ast
 {
@@ -215,6 +267,7 @@ namespace ast
 
 
 }
+*/
 
 
 

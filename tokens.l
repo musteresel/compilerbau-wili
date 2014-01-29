@@ -66,13 +66,14 @@ char flex_debug = 1;
 [ \t]                                  ;
 \n                                     ++linenum;
 
-;                                      TOKEN_TERMINAL(T_LSEP);
+;                                      TOKEN_TERMINAL(T_BSEP);
 \{                                     TOKEN_TERMINAL(T_LBRA);
 \}                                     TOKEN_TERMINAL(T_RBRA);
 \(                                     TOKEN_TERMINAL(T_LPAR);
 \)                                     TOKEN_TERMINAL(T_RPAR);
 
 ><                                     TOKEN_TERMINAL(T_ICONSTRUCT);
+\|<                                    TOKEN_TERMINAL(T_ICONSTRUCT_UNARY);
 
 \+(?i:n(ext)?)                         TOKEN_TERMINAL(T_FAN);
 \+(?i:d(own)?)                         TOKEN_TERMINAL(T_FAD);
@@ -125,10 +126,12 @@ char flex_debug = 1;
 #(?i:u(pper)?b(ound)?)                 TOKEN_TERMINAL(T_IUB);
 #(?i:l(ower)?b(ound)?)                 TOKEN_TERMINAL(T_ILB);
 
+declare                                TOKEN_TERMINAL(T_DECLARE);
 =                                      TOKEN_TERMINAL(T_ASSIGN);
 if                                     TOKEN_TERMINAL(T_IF);
 then                                   TOKEN_TERMINAL(T_THEN);
 else                                   TOKEN_TERMINAL(T_ELSE);
+fi                                     TOKEN_TERMINAL(T_FI);
 
 and                                    TOKEN_TERMINAL(T_AND);
 or                                     TOKEN_TERMINAL(T_OR);
@@ -140,26 +143,12 @@ false                                  TOKEN_TERMINAL(T_FALSE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [+-]?(([0-9]*(\.[0-9]+)?([eE][+-]?[0-9]+)?)|infinite) STRING_TERMINAL(T_FLOAT);
 [a-zA-Z_][a-zA-Z0-9_]*                 {
-  std::string * ident = new std::string(yytext, yyleng);
-  int token_type = ast::context_lookup(ident);
-  if (flex_debug)
-  {
-    char const * msg;
-    switch (token_type)
-    {
-      case T_IDENTIFIER: msg = "T_IDENTIFIER"; break;
-      case T_BOOL_CALL: msg = "T_BOOL_CALL"; break;
-      case T_NUM_CALL: msg = "T_NUM_CALL"; break;
-      case T_DECOR_CALL: msg = "T_DECOR_CALL"; break;
-      case T_IVAL_CALL: msg = "T_IVAL_CALL"; break;
-      default: msg = "shit just got real"; break;
-    }
-    std::cerr << "[LEX] " << msg << ": \"" << *ident << "\"" << std::endl;
+    if (ast::in_declaration()) 
+      { STRING_TERMINAL(T_IDENTIFIER); }
+    else
+      { STRING_TERMINAL(T_CALL); }
   }
-  yylval.string = ident;
-  return token_type;
-}
-STRING_TERMINAL(T_IDENTIFIER);
+
 
 .                                      ;
 

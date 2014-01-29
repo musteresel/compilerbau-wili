@@ -11,337 +11,211 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
 %union {
   ast::expr * expr;
-  ast::bool_expr * bool_expr;
-  ast::num_expr * num_expr;
-  ast::decor_expr * decor_expr;
-  ast::ival_expr * ival_expr;
-  std::list<std::unique_ptr<ast::expr const>> * expr_seq;
+  std::list<std::unique_ptr<ast::expr const>> * expr_list;
   std::string * string;
   int token;
 }
-/*
-%type <expr_seq> expr_seq
-
-%type <expr> expr
-%type <bool_expr> bool_expr bool_literal bool_termseq
-%type <num_expr> num_expr num_literal num_termseq
-%type <decor_expr> decor_expr decor_literal decor_termseq
-%type <ival_expr> ival_expr ival_termseq
-
-%type <token> num_compare num_addsub num_muldiv ival_compare
-%type <token> ival_addsub ival_muldiv ival_bound bool_andor
-*/
-
-
-/* Terminal string tokens
- * - T_IDENT: A string containing an identifier.
- * - T_NUMERIC: A string with a floating point value.
- * - T_DECOR: A string with one of the decor type values.
- * - T_TYPE: A string with one type identifier.
-*/
-%token <string> T_IDENTIFIER T_FLOAT T_DECOR T_TYPE T_TRUE T_FALSE
-
-
-/* Terminal utility tokens
- * - LPAR == (
- * - RPAR == )
- * - LBRA == {
- * - RBRA == }
- * - IF   == if
- * - ELSE == else
- * - LSEP == ;
-*/
-%token <token> T_LPAR T_RPAR T_LBRA T_RBRA T_IF T_THEN T_ELSE T_LSEP
-
-
-/* Terminal assignment token
-*/
-%right <token> T_ASSIGN
-
-%nonassoc LIST
-%nonassoc CONDITIONAL
-
-/* Interval comparision operators
- * - EQ == equal
- * - NE == not equal
- * - SI == subinterval
- * - SS == strict subinterval
- * - WI == wrapper interval
- * - SW == strict wrapper interval
- * - LT == (any) less than
- * - LE == (any) less or equal
- * - GT == (any) greater than
- * - GE == (any) greater or equal
- * - ALT == all less than
- * - ALE == all less or equal
- * - AGT == all greater than
- * - AGE == all greater or equal
-*/
-%left <token> T_IEQ T_INE T_ISI T_ISS T_IWI T_ISW
-%left <token> T_ILT T_ILE T_IGT T_IGE T_IALT T_IALE T_IAGT T_IAGE
-
-
-/* Floating point comparision operators
- * - EQ == equal
- * - NE == not equal
- * - LT == less than
- * - LE == less or equal
- * - GT == greater than
- * - GE == greater or equal
-*/
-%left <token> T_FEQ T_FNE T_FGT T_FGE T_FLT T_FLE
-
-
-/* Interval arithmetic operators
- * - A == add
- * - S == subtract
- * - M == multiply
- * - D == divide
-*/
-%left <token> T_IA T_IS IVAL_ADDSUB
-%left <token> T_IM T_ID IVAL_MULDIV
-
-
-/* Interval construction is non associative
-*/
-%nonassoc <token> T_ICONSTRUCT
-
-
-/** Floating point arithmetic operators with rounding setting
- * - A? == add
- * - S? == subtract
- * - M? == multiply
- * - D? == divide
- * - ?N == round to next number
- * - ?D == round to next lower number (down)
- * - ?U == round to next higher number (up)
-*/
-%left <token> T_FAN T_FAD T_FAU T_FSN T_FSD T_FSU NUM_ADDSUB
-%left <token> T_FMN T_FMD T_FMU T_FDN T_FDD T_FDU NUM_MULDIV
-
-
-/* Interval bound query operators are non associative
-*/
-%nonassoc <token> T_IUB T_ILB IVAL_BOUND
-
-
-/* Decoration operators
-*/
-%nonassoc <token> T_IDE T_IUD T_IGD
-
-
-%left <token> T_AND T_OR BOOL_ANDOR
-%right <token> T_NOT
-
-%left <token> T_BOOL_CALL T_NUM_CALL T_DECOR_CALL T_IVAL_CALL
-
-%nonassoc CALL
-
-%nonassoc T_UNARY
 
 
 %start expr
+
+
+%nonassoc <token> P_UNUSED T_TYPE
+
+%type <expr> expr
+%type <expr_list> expr_list
+%type <token> op_andor op_eqne op_compare op_ival_addsub op_ival_muldiv
+%type <token> op_num_addsub op_num_muldiv op_bounds op_num_unary
+
+
+%token <token> T_FLOAT T_DECOR T_TRUE T_FALSE
+%right <token> P_ASSIGNMENT T_DECLARE T_ASSIGN
+%token <string> P_DECLARE T_IDENTIFIER
+%token <token> P_BLOCK T_LBRA T_RBRA T_BSEP
+%token <token> P_CONDITIONAL T_IF T_THEN T_ELSE T_FI
+%left <token> P_BINARY_BOOL T_AND T_OR
+%right <token> P_UNARY_BOOL T_NOT
+%left <token> P_EQUALITY T_IEQ T_INE T_FEQ T_FNE
+%nonassoc <token> P_COMPARE T_FLT T_FLE T_FGT T_FGE T_ILT T_ILE T_IGT T_IGE T_IALT T_IALE T_IAGT T_IAGE T_ISI T_ISS T_IWI T_ISW
+%left <token> P_IVAL_ADDSUB T_IA T_IS
+%left <token> P_IVAL_MULDIV T_IM T_ID
+%nonassoc P_IVAL_UNARY
+%nonassoc <token> P_DECORATE T_IDE
+%nonassoc <token> P_DECOR_GET T_IGD
+%nonassoc <token> P_BOUNDS T_IUB T_ILB
+%nonassoc <token> P_DECOR_REMOVE T_IUD
+%nonassoc <token> P_IVAL_CONSTRUCT T_ICONSTRUCT
+%nonassoc <token> P_IVAL_CONSTRUCT_UNARY T_ICONSTRUCT_UNARY
+%left <token> P_NUM_ADDSUB T_FAN T_FAD T_FAU T_FSN T_FSD T_FSU
+%left <token> P_NUM_MULDIV T_FMN T_FMD T_FMU T_FDN T_FDD T_FDU
+%token <string> P_CALL T_CALL
+%nonassoc P_NUM_UNARY
+%nonassoc P_GROUP T_LPAR T_RPAR
+
+
 %%
-
-
 expr :
-       expr T_IS expr
-     | unary expr %prec T_UNARY
-     | T_LPAR expr T_RPAR
-     | T_LBRA expr_seq T_RBRA
-     | '!' T_IDENTIFIER T_LPAR paramlist T_RPAR T_ASSIGN expr
-     | T_IDENTIFIER T_LPAR exprlist T_RPAR %prec CALL
-     | T_IF expr T_THEN expr T_ELSE expr %prec CONDITIONAL
-;
+/* Declaration of a function or variable */
+T_DECLARE {ast::begin_declaration();} 
+T_IDENTIFIER T_ASSIGN {ast::end_declaration();} expr
+{$$ = ast::create<ast::declaration>($3,$6);}
 
-paramlist :
-          /* empty */
-          | paramlist T_IDENTIFIER
-;
+|
+/* Block with an expression list */
+T_LBRA expr_list T_RBRA
+{$$ = ast::create<ast::block>($2);}
 
-exprlist :
-         /* empty */
-         | exprlist expr %prec LIST
-;
+|
+/* Conditional evaluation */
+T_IF expr T_THEN expr T_ELSE expr T_FI
+{$$ = ast::create<ast::conditional>($2,$4,$6);}
 
-expr_seq :
-           expr
-         | expr_seq T_LSEP expr
-;
+|
+/* Boolean binary operation */
+expr op_andor expr %prec P_BINARY_BOOL
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
+|
+/* Boolean negation operation */
+T_NOT expr
+{$$ = ast::create<ast::unary>($1,$2);}
 
-binary : T_IS
-;
+|
+/* (Un)Equality operations */
+expr op_eqne expr %prec P_EQUALITY
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
+|
+/* Compare operations */
+expr op_compare expr %prec P_COMPARE
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
-unary : T_IS
+|
+/* Interval addition and subtraction */
+expr op_ival_addsub expr %prec P_IVAL_ADDSUB
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
+|
+/* Interval multiplication and division */
+expr op_ival_muldiv expr %prec P_IVAL_MULDIV
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
-/*
-expr : bool_expr
-     | num_expr
-     | ival_expr
-     | decor_expr
-;
+|
+/* Interval decoration operation */
+expr T_IDE expr
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
+|
+/* Extract / get decoration from a given interval */
+T_IGD expr
+{$$ = ast::create<ast::unary>($1,$2);}
 
-bool_expr :
-            num_expr num_compare num_expr
-{ $$ = ast::create<ast::num_compare>($2,$1,$3); }
-          | ival_expr ival_compare ival_expr
-{ $$ = ast::create<ast::ival_compare>($2,$1,$3); }
-          | bool_expr bool_andor bool_expr %prec BOOL_ANDOR
-{ $$ = ast::create<ast::bool_binary>($2,$1,$3); }
-          | T_NOT bool_expr
-          | T_IF bool_expr T_THEN bool_expr T_ELSE bool_expr %prec CONDITIONAL
-{ $$ = ast::create<ast::bool_conditional>($2, $4, $6); }
-          | T_LPAR bool_expr T_RPAR
-{ $$ = $2; }
-          | T_LBRA bool_termseq T_RBRA
-{ $$ = $2; }
-          | bool_literal
-          | T_IDENTIFIER T_ASSIGN bool_expr
-{ std::cout << "bool ident " << $1 << " assigned!" << std::endl; }
-;
+|
+/* Get upper or lower bound of interval */
+op_bounds expr %prec P_BOUNDS
+{$$ = ast::create<ast::unary>($1,$2);}
 
+|
+/* Remove decoration from interval */
+T_IUD expr
+{$$ = ast::create<ast::unary>($1,$2);}
 
-num_expr :
-          num_expr num_addsub num_expr %prec NUM_ADDSUB
-{ $$ = ast::create<ast::num_binary>($2,$1,$3); }
-         | num_expr num_muldiv num_expr %prec NUM_MULDIV
-{ $$ = ast::create<ast::num_binary>($2,$1,$3); }
-         | ival_bound ival_expr %prec IVAL_BOUND
-         | T_IF bool_expr T_THEN num_expr T_ELSE num_expr %prec CONDITIONAL
-{ $$ = ast::create<ast::num_conditional>($2,$4,$6); }
-         | T_LPAR num_expr T_RPAR
-{ $$ = $2; }
-         | T_LBRA num_termseq T_RBRA
-{ $$ = $2; }
-         | num_literal
-          | T_IDENTIFIER  T_ASSIGN num_expr
-{ std::cout << "num ident " << $1 << " assigned!" << std::endl; }
-;
+|
+/* Unary negation of an interval */
+T_IS expr %prec P_IVAL_UNARY
+{$$ = ast::create<ast::unary>($1,$2);}
 
+|
+/* Construction of an interval */
+expr T_ICONSTRUCT expr
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
-decor_expr : T_IGD ival_expr
-           | T_IF bool_expr T_THEN decor_expr T_ELSE decor_expr
-{ $$ = ast::create<ast::decor_conditional>($2,$4,$6); }
-           | T_LPAR decor_expr T_RPAR
-{ $$ = $2; }
-           | T_LBRA decor_termseq T_RBRA
-{ $$ = $2; }
-           | decor_literal
-;
+|
+/* Unary construction of an interval */
+T_ICONSTRUCT expr %prec P_IVAL_CONSTRUCT_UNARY
+{$$ = ast::create<ast::unary>($1,$2);}
 
+|
+/* Addition and subtraction of numbers */
+expr op_num_addsub expr %prec P_NUM_ADDSUB
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
-ival_expr :
-            ival_expr ival_addsub ival_expr %prec IVAL_ADDSUB
-{ $$ = ast::create<ast::ival_binary>($2,$1,$3); }
-          | ival_expr ival_muldiv ival_expr %prec IVAL_MULDIV
-{ $$ = ast::create<ast::ival_binary>($2,$1,$3); }
-          | num_expr T_ICONSTRUCT num_expr
-          | T_ICONSTRUCT num_expr
-          | decor_expr T_IDE ival_expr
-          | T_IUD ival_expr
-          | T_IF bool_expr T_THEN ival_expr T_ELSE ival_expr %prec CONDITIONAL
-{ $$ = ast::create<ast::ival_conditional>($2,$4,$6); }
-          | T_LPAR ival_expr T_RPAR
-{ $$ = $2; }
-          | T_LBRA ival_termseq T_RBRA
-{ $$ = $2; }
-;
+|
+/* Multiplication and division of numbers */
+expr op_num_muldiv expr %prec P_NUM_MULDIV
+{$$ = ast::create<ast::binary>($2,$1,$3);}
 
+|
+/* Call of a previously declared function / variable */
+T_CALL
+{$$ = ast::create<ast::call>($1);}
 
-bool_termseq :
-             expr_seq bool_expr
-{ $$ = ast::create<ast::bool_termseq>($1,$2); }
-;
+|
+/* Unary operation (negation) of numbers */
+op_num_unary expr %prec P_NUM_UNARY
+{$$ = ast::create<ast::unary>($1,$2);}
 
+|
+/* Grouping of an expression */
+T_LPAR expr T_RPAR
+{$$ = ast::create<ast::group>($2);}
 
-num_termseq :
-            expr_seq num_expr
-{ $$ = ast::create<ast::num_termseq>($1,$2); }
-;
+|
+/* Float (number) literal */
+T_FLOAT
+{$$ = ast::create<ast::number>($1);}
 
+|
+/* Decoration literal */
+T_DECOR
+{$$ = ast::create<ast::decor>($1);}
 
-decor_termseq :
-              expr_seq decor_expr
-{ $$ = ast::create<ast::decor_termseq>($1,$2); }
-;
+|
+/* Boolean true literal */
+T_TRUE
+{$$ = ast::create<ast::boolean>(true);}
 
-
-ival_termseq :
-             expr_seq ival_expr
-{ $$ = ast::create<ast::ival_termseq>($1,$2); }
+|
+/* Boolean false literal */
+T_FALSE
+{$$ = ast::create<ast::boolean>(false);}
 ;
 
 
-expr_seq :
-         
-{ $$ = new std::list<std::unique_ptr<ast::expr const>>(); }
-         | expr_seq expr T_LSEP
-{ $$ = $1; $$->push_back(std::unique_ptr<ast::expr const>($2)); }
+
+expr_list :
+/* Single expression can be considered as list */
+expr
+{$$ = ast::create<ast::expr_list>();
+ $$->push_back(std::unique_ptr<ast::expr const>($1));
+}
+
+|
+/* Another expression in the list */
+expr_list T_BSEP expr
+{$$ = $1;
+ $$->push_back(std::unique_ptr<ast::expr const>($3));
+}
 ;
 
 
-num_compare : T_FEQ | T_FNE | T_FLT | T_FLE | T_FGT | T_FGE
-;
 
 
-num_addsub : T_FAN | T_FAD | T_FAU
-           | T_FSN | T_FSD | T_FSU
-;
+op_andor : T_AND | T_OR;
+op_eqne : T_FEQ | T_FNE | T_IEQ | T_INE;
+op_compare : T_FLT | T_FLE | T_FGT | T_FGE 
+           | T_ILT | T_ILE | T_IGT | T_IGE | T_IALT | T_IALE | T_IAGT | T_IAGE
+           | T_ISI | T_ISS | T_IWI | T_ISW;
+op_ival_addsub : T_IA | T_IS;
+op_ival_muldiv : T_IM | T_ID;
+op_bounds : T_IUB | T_ILB;
+op_num_addsub : T_FAN | T_FAD | T_FAU | T_FSN | T_FSD | T_FSU;
+op_num_muldiv : T_FMN | T_FMD | T_FMU | T_FDN | T_FDD | T_FDU;
+op_num_unary : T_FSN | T_FSD | T_FSU;
 
 
-num_muldiv : T_FMN | T_FMD | T_FMU
-           | T_FDN | T_FDD | T_FDU
-;
 
-
-ival_compare : T_IEQ | T_INE | T_ISI | T_ISS | T_IWI | T_ISW 
-             | T_ILT | T_ILE | T_IGT | T_IGE 
-             | T_IALT | T_IALE | T_IAGT | T_IAGE
-;
-
-
-ival_addsub : T_IA | T_IS
-;
-
-
-ival_muldiv : T_IM | T_ID
-;
-
-
-ival_bound : T_IUB | T_ILB
-;
-
-
-bool_andor : T_AND | T_OR
-;
-
-
-bool_literal :
-             T_TRUE
-{ $$ = ast::create<ast::bool_literal>(true); }
-             | T_FALSE
-{ $$ = ast::create<ast::bool_literal>(false); }
-;
-
-
-num_literal :
-            T_FLOAT
-{ $$ = ast::create<ast::num_literal>($1); }
-;
-
-
-decor_literal :
-              T_DECOR
-{ $$ = ast::create<ast::decor_literal>($1); }
-;
-
-*/
 
 %%
 /* empty */
-
 
