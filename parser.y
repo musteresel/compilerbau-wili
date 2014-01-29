@@ -19,7 +19,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
   std::string * string;
   int token;
 }
-
+/*
 %type <expr_seq> expr_seq
 
 %type <expr> expr
@@ -30,6 +30,8 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
 %type <token> num_compare num_addsub num_muldiv ival_compare
 %type <token> ival_addsub ival_muldiv ival_bound bool_andor
+*/
+
 
 /* Terminal string tokens
  * - T_IDENT: A string containing an identifier.
@@ -56,6 +58,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 */
 %right <token> T_ASSIGN
 
+%nonassoc LIST
 %nonassoc CONDITIONAL
 
 /* Interval comparision operators
@@ -132,12 +135,49 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
 %left <token> T_BOOL_CALL T_NUM_CALL T_DECOR_CALL T_IVAL_CALL
 
+%nonassoc CALL
+
+%nonassoc T_UNARY
+
 
 %start expr
 %%
 
 
+expr :
+       expr T_IS expr
+     | unary expr %prec T_UNARY
+     | T_LPAR expr T_RPAR
+     | T_LBRA expr_seq T_RBRA
+     | '!' T_IDENTIFIER T_LPAR paramlist T_RPAR T_ASSIGN expr
+     | T_IDENTIFIER T_LPAR exprlist T_RPAR %prec CALL
+     | T_IF expr T_THEN expr T_ELSE expr %prec CONDITIONAL
+;
 
+paramlist :
+          /* empty */
+          | paramlist T_IDENTIFIER
+;
+
+exprlist :
+         /* empty */
+         | exprlist expr %prec LIST
+;
+
+expr_seq :
+           expr
+         | expr_seq T_LSEP expr
+;
+
+
+binary : T_IS
+;
+
+
+unary : T_IS
+
+
+/*
 expr : bool_expr
      | num_expr
      | ival_expr
@@ -237,7 +277,7 @@ ival_termseq :
 
 
 expr_seq :
-         /* empty */
+         
 { $$ = new std::list<std::unique_ptr<ast::expr const>>(); }
          | expr_seq expr T_LSEP
 { $$ = $1; $$->push_back(std::unique_ptr<ast::expr const>($2)); }
@@ -299,7 +339,7 @@ decor_literal :
 { $$ = ast::create<ast::decor_literal>($1); }
 ;
 
-
+*/
 
 %%
 /* empty */
