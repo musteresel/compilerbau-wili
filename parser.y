@@ -11,7 +11,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
 %union {
   ast::expr * expr;
-  std::list<std::unique_ptr<ast::expr const>> * expr_list;
+  std::list<ast::expr_ptr> * expr_list;
   std::string * string;
   int token;
 }
@@ -28,7 +28,8 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 %type <token> op_num_addsub op_num_muldiv op_bounds op_num_unary
 
 
-%token <token> T_FLOAT T_DECOR T_TRUE T_FALSE
+%token <string> T_FLOAT T_DECOR
+%token T_TRUE T_FALSE
 %right <token> P_ASSIGNMENT T_DECLARE T_ASSIGN
 %token <string> P_DECLARE T_IDENTIFIER
 %token <token> P_BLOCK T_LBRA T_RBRA T_BSEP
@@ -163,7 +164,7 @@ T_LPAR expr T_RPAR
 |
 /* Float (number) literal */
 T_FLOAT
-{$$ = ast::create<ast::number>($1);}
+{$$ = ast::create<ast::numeric>($1);}
 
 |
 /* Decoration literal */
@@ -186,15 +187,15 @@ T_FALSE
 expr_list :
 /* Single expression can be considered as list */
 expr
-{$$ = ast::create<ast::expr_list>();
- $$->push_back(std::unique_ptr<ast::expr const>($1));
+{$$ = new std::list<ast::expr_ptr>();
+ $$->push_back(ast::expr_ptr($1));
 }
 
 |
 /* Another expression in the list */
 expr_list T_BSEP expr
 {$$ = $1;
- $$->push_back(std::unique_ptr<ast::expr const>($3));
+ $$->push_back(ast::expr_ptr($3));
 }
 ;
 

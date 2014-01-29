@@ -10,9 +10,10 @@
 namespace ast
 {
   class expr;
-  using expr_ptr = std::unique_ptr<expr const>;
-  using string_ptr = std::unique_ptr<std::string const>;
-  using expr_list_ptr = std::unique_ptr<std::list<expr_ptr>>;
+  template<typename T> using ptr = std::unique_ptr<T>;
+  using expr_ptr = ptr<expr>;
+  using string_ptr = ptr<std::string const>;
+  using expr_list_ptr = ptr<std::list<expr_ptr>>;
 }
 
 
@@ -26,11 +27,11 @@ namespace ast
 
 namespace ast
 {
-  template<typename T, typename... ARGS> expr_ptr create(ARGS... args)
+  template<typename T, typename... ARGS> T * create(ARGS... args)
   {
     T * node = new T(args...);
     std::cerr << "[AST] " << typeid(T).name() << std::endl;
-    return expr_ptr(node);
+    return node;
   }
 }
 
@@ -47,8 +48,8 @@ namespace ast
     protected:
       expr_ptr expression;
     public:
-      group(expr_ptr e)
-        : expression(std::move(e))
+      group(expr * const e)
+        : expression(e)
       {}
   };
   class unary : public expr
@@ -57,8 +58,8 @@ namespace ast
       expr_ptr expression;
       int op;
     public:
-      unary(int o, expr_ptr e)
-        : op(o), expression(std::move(e))
+      unary(int o, expr * const e)
+        : op(o), expression(e)
       {}
   };
   class binary : public expr
@@ -68,11 +69,78 @@ namespace ast
       expr_ptr rhs;
       int op;
     public:
-      binary(int o, expr_ptr l, expr_ptr r)
-        : op(o), lhs(std::move(l)), rhs(std::move(r))
+      binary(int o, expr * const l, expr * const r)
+        : op(o), lhs(l), rhs(r)
       {}
   };
-  
+  class boolean : public expr
+  {
+    protected:
+      bool value;
+    public:
+      boolean(bool v)
+        : value(v)
+      {}
+  };
+  class numeric : public expr
+  {
+    protected:
+      double value;
+    public:
+      numeric(std::string * const text)
+        : value(std::stod(*text))
+      {
+        delete text;
+      }
+  };
+  class decor : public expr
+  {
+    protected:
+      string_ptr value;
+    public:
+      decor(std::string const * const text)
+        : value(text) //TODO
+      {}
+  };
+  class conditional : public expr
+  {
+    protected:
+      expr_ptr condition;
+      expr_ptr truecase;
+      expr_ptr falsecase;
+    public:
+      conditional(expr * const c, expr * const t, expr * const f)
+        : condition(c), truecase(t), falsecase(f)
+      {}
+  };
+  class declaration : public expr
+  {
+    protected:
+      expr_ptr expression;
+      string_ptr name;
+    public:
+      declaration(std::string const * const text, expr * const e)
+        : name(text), expression(e)
+      {}
+  };
+  class call : public expr
+  {
+    protected:
+      string_ptr name;
+    public:
+      call(std::string const * const text)
+        : name(text)
+      {}
+  };
+  class block : public expr
+  {
+    protected:
+      ptr<std::list<expr_ptr>> expressions;
+    public:
+      block(std::list<expr_ptr> * const e)
+        : expressions(e)
+      {}
+  };
 }
 
 
