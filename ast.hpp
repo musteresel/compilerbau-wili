@@ -19,6 +19,19 @@ namespace ast
 
 namespace ast
 {
+  enum type
+  {
+    UNKNOWN,
+    BOOLEAN,
+    NUMERIC,
+    DECOR,
+    INTERVAL
+  };
+}
+
+
+namespace ast
+{
   void begin_declaration(void);
   void end_declaration(void);
   bool in_declaration(void);
@@ -38,10 +51,76 @@ namespace ast
 
 namespace ast
 {
-  class expr
+
+  class base_visitor
+  {
+    public:
+      virtual void fail(void) = 0;
+      virtual ~base_visitor() {}
+  };
+  template<typename T> class visitor_for : public virtual base_visitor
+  {
+    public:
+      virtual void visit_and_do(T &, std::function<void()> const &) = 0;
+  };
+
+
+  class visitable
+  {
+    protected:
+      template<typename T>
+        static void accept_and_do(
+            T & visited,
+            base_visitor & guest,
+            std::function<void()> const & action)
+        {
+          if (visitor_for<T> *p = dynamic_cast<visitor_for<T>*>(&guest))
+          {
+            p->visit_and_do(visited, action);
+          }
+          else
+          {
+            guest.fail();
+          }
+        }
+    public:
+      virtual ~visitable() {}
+      virtual void accept(base_visitor &) = 0;
+  };
+
+
+  class expr : public visitable
   {
     public:
       virtual ~expr() {};
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "expression?";
+      }
+      virtual void accept(base_visitor & v)
+      {
+        accept_and_do(*this,v,
+            []() {});
+      }
+  };
+  class module : public expr
+  {
+    protected:
+      string_ptr name;
+      expr_ptr expression;
+    public:
+      module(std::string const * const text, expr * const e)
+        : name(text), expression(e)
+      {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "module <" << *name << ">";
+      }
+      virtual void accept(base_visitor & v)
+      {
+        accept_and_do(*this,v,
+            [&v,this]() {expression->accept(v);});
+      }
   };
   class group : public expr
   {
@@ -51,6 +130,10 @@ namespace ast
       group(expr * const e)
         : expression(e)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "group";
+      }
   };
   class unary : public expr
   {
@@ -61,6 +144,10 @@ namespace ast
       unary(int o, expr * const e)
         : op(o), expression(e)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "unary <" << op << ">";
+      }
   };
   class binary : public expr
   {
@@ -72,6 +159,10 @@ namespace ast
       binary(int o, expr * const l, expr * const r)
         : op(o), lhs(l), rhs(r)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "binary <" << op << ">";
+      }
   };
   class boolean : public expr
   {
@@ -81,6 +172,10 @@ namespace ast
       boolean(bool v)
         : value(v)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "boolean <" << value << ">";
+      }
   };
   class numeric : public expr
   {
@@ -92,6 +187,10 @@ namespace ast
       {
         delete text;
       }
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "numeric <" << value << ">";
+      }
   };
   class decor : public expr
   {
@@ -101,6 +200,10 @@ namespace ast
       decor(std::string const * const text)
         : value(text) //TODO
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "decor <" << *value << ">";
+      }
   };
   class conditional : public expr
   {
@@ -112,6 +215,10 @@ namespace ast
       conditional(expr * const c, expr * const t, expr * const f)
         : condition(c), truecase(t), falsecase(f)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "conditional";
+      }
   };
   class declaration : public expr
   {
@@ -122,6 +229,10 @@ namespace ast
       declaration(std::string const * const text, expr * const e)
         : name(text), expression(e)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "declaration <" << *name << ">";
+      }
   };
   class call : public expr
   {
@@ -131,6 +242,10 @@ namespace ast
       call(std::string const * const text)
         : name(text)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "call <" << *name << ">";
+      }
   };
   class block : public expr
   {
@@ -140,6 +255,47 @@ namespace ast
       block(std::list<expr_ptr> * const e)
         : expressions(e)
       {}
+      virtual void print_description_to(std::ostream & stream) const
+      {
+        stream << "block";
+      }
+  };
+
+
+  template<typename T> class print_description_visitor_for : public visitor_for<T>
+  {
+    public:
+      virtual void handle_expr(expr &, std::function<void()> const &) = 0;
+      virtual void visit_and_do(T & e, std::function<void()> const & a)
+      {
+        handle_expr(e,a);
+      }
+  };
+
+  class print_description_tree_visitor : public print_description_visitor_for<expr>,
+                                         public print_description_visitor_for<module>,
+                                         public print_description_visitor_for<declaration>
+  {
+    protected:
+      int indent = 0;
+    public:
+      virtual void fail(void)
+      {
+        std::cout << "visitor failed" << std::endl;
+      }
+      virtual void handle_expr(expr & e, std::function<void()> const & a)
+      {
+        for (int i = 0; i < indent; i++)
+        {
+          std::cout << " ";
+        }
+        std::cout << "|- ";
+        e.print_description_to(std::cout);
+        std::cout << std::endl;
+        indent++;
+        a();
+        indent--;
+      }
   };
 }
 

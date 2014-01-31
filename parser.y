@@ -7,9 +7,12 @@
 extern int yylex();
 void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
+ast::module * program;
+
 %}
 
 %union {
+  ast::module * module;
   ast::expr * expr;
   std::list<ast::expr_ptr> * expr_list;
   std::string * string;
@@ -17,11 +20,11 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 }
 
 
-%start expr
 
 
 %nonassoc <token> P_UNUSED T_TYPE
 
+%type <module> module
 %type <expr> expr
 %type <expr_list> expr_list
 %type <token> op_andor op_eqne op_compare op_ival_addsub op_ival_muldiv
@@ -30,7 +33,7 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 
 %token <string> T_FLOAT T_DECOR
 %token T_TRUE T_FALSE
-%right <token> P_ASSIGNMENT T_DECLARE T_ASSIGN
+%right <token> P_ASSIGNMENT T_DECLARE T_ASSIGN T_MODULE
 %token <string> P_DECLARE T_IDENTIFIER
 %token <token> P_BLOCK T_LBRA T_RBRA T_BSEP
 %token <token> P_CONDITIONAL T_IF T_THEN T_ELSE T_FI
@@ -53,8 +56,15 @@ void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
 %nonassoc P_NUM_UNARY
 %nonassoc P_GROUP T_LPAR T_RPAR
 
+%start module
 
 %%
+module :
+T_MODULE {ast::begin_declaration();}
+T_IDENTIFIER T_ASSIGN {ast::end_declaration();} expr
+{$$ = ast::create<ast::module>($3,$6); program = $$;}
+;
+
 expr :
 /* Declaration of a function or variable */
 T_DECLARE {ast::begin_declaration();} 

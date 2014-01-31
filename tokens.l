@@ -126,6 +126,7 @@ char flex_debug = 1;
 #(?i:u(pper)?b(ound)?)                 TOKEN_TERMINAL(T_IUB);
 #(?i:l(ower)?b(ound)?)                 TOKEN_TERMINAL(T_ILB);
 
+module                                 TOKEN_TERMINAL(T_MODULE);
 declare                                TOKEN_TERMINAL(T_DECLARE);
 =                                      TOKEN_TERMINAL(T_ASSIGN);
 if                                     TOKEN_TERMINAL(T_IF);
