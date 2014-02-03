@@ -49,58 +49,51 @@ namespace ast
 }
 
 
+
 namespace ast
 {
 
-  class base_visitor
+  template<typename Visitor>
+    class visitable
+    {
+      public:
+        virtual void accept(Visitor &) = 0;
+    };
+  template<
+    typename Visitor,
+    typename Acceptant,
+    typename Base = visitable<Visitor>>
+      class _isacceptedby_deriving_ : public Base
+    {
+      virtual void accept(Visitor & v)
+      {
+        v.visit(static_cast<T &>(*this));
+      }
+    };
+
+
+
+
+  class visitor
   {
     public:
-      virtual void fail(void) = 0;
-      virtual ~base_visitor() {}
+      virtual void visit(expr &) = 0;
   };
-  template<typename T> class visitor_for : public virtual base_visitor
-  {
-    public:
-      virtual void visit_and_do(T &, std::function<void()> const &) = 0;
-  };
+  template<typename Acceptant>
+    class expr_with_default_accept : 
+      public _isacceptedby_deriving_<visitor,Acceptant,expr>
+  {};
 
 
-  class visitable
-  {
-    protected:
-      template<typename T>
-        static void accept_and_do(
-            T & visited,
-            base_visitor & guest,
-            std::function<void()> const & action)
-        {
-          if (visitor_for<T> *p = dynamic_cast<visitor_for<T>*>(&guest))
-          {
-            p->visit_and_do(visited, action);
-          }
-          else
-          {
-            guest.fail();
-          }
-        }
-    public:
-      virtual ~visitable() {}
-      virtual void accept(base_visitor &) = 0;
-  };
 
 
-  class expr : public visitable
+  class expr : public visitable<visitor>
   {
     public:
       virtual ~expr() {};
       virtual void print_description_to(std::ostream & stream) const
       {
         stream << "expression?";
-      }
-      virtual void accept(base_visitor & v)
-      {
-        accept_and_do(*this,v,
-            []() {});
       }
   };
   class module : public expr
@@ -116,8 +109,9 @@ namespace ast
       {
         stream << "module <" << *name << ">";
       }
-      virtual void accept(base_visitor & v)
+      virtual void accept(visitor & v)
       {
+        v.
         accept_and_do(*this,v,
             [&v,this]() {expression->accept(v);});
       }
@@ -163,6 +157,12 @@ namespace ast
       {
         stream << "binary <" << op << ">";
       }
+      virtual void accept(base_visitor & v)
+      {
+        accept_and_do(*this,v,
+            [&v,this]() {lhs->accept(v); rhs->accept(v);});
+      }
+
   };
   class boolean : public expr
   {
