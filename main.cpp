@@ -9,8 +9,8 @@ int main(int argc, char** argv)
 	std::cout << "Starting WILI compiler" << std::endl;
   yyparse();
 	std::cout << program << std::endl;
-	ast::print_description_tree_visitor v;
-	program->accept(v);
+	ast::description_printer p(std::cout);
+	program->accept(p);
   return 0;
 }
 

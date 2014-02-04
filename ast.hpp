@@ -7,6 +7,10 @@
 #include <memory>
 #include <list>
 
+#include "climbing-acyclic-visitor.hpp"
+using namespace cav;
+
+
 namespace ast
 {
   class expr;
@@ -49,59 +53,33 @@ namespace ast
 }
 
 
+template<typename P, typename N> class derive : public P, public is_visitable<N>
+{
+  public:
+    using parent_visitable = P;
+    void accept(base_visitor & visitor)
+    {
+      is_visitable<N>::accept(visitor);
+    }
+};
 
 namespace ast
 {
-
-  template<typename Visitor>
-    class visitable
-    {
-      public:
-        virtual void accept(Visitor &) = 0;
-    };
-  template<
-    typename Visitor,
-    typename Acceptant,
-    typename Base = visitable<Visitor>>
-      class _isacceptedby_deriving_ : public Base
-    {
-      virtual void accept(Visitor & v)
-      {
-        v.visit(static_cast<T &>(*this));
-      }
-    };
-
-
-
-
-  class visitor
+  class expr : public is_visitable<expr>
   {
     public:
-      virtual void visit(expr &) = 0;
-  };
-  template<typename Acceptant>
-    class expr_with_default_accept : 
-      public _isacceptedby_deriving_<visitor,Acceptant,expr>
-  {};
-
-
-
-
-  class expr : public visitable<visitor>
-  {
-    public:
+      using parent_visitable = base_visitable;
       virtual ~expr() {};
       virtual void print_description_to(std::ostream & stream) const
       {
         stream << "expression?";
       }
   };
-  class module : public expr
+  class module : public derive<expr,module>
   {
-    protected:
+    public:
       string_ptr name;
       expr_ptr expression;
-    public:
       module(std::string const * const text, expr * const e)
         : name(text), expression(e)
       {}
@@ -109,18 +87,11 @@ namespace ast
       {
         stream << "module <" << *name << ">";
       }
-      virtual void accept(visitor & v)
-      {
-        v.
-        accept_and_do(*this,v,
-            [&v,this]() {expression->accept(v);});
-      }
   };
-  class group : public expr
+  class group : public derive<expr,group>
   {
-    protected:
-      expr_ptr expression;
     public:
+      expr_ptr expression;
       group(expr * const e)
         : expression(e)
       {}
@@ -129,12 +100,11 @@ namespace ast
         stream << "group";
       }
   };
-  class unary : public expr
+  class unary : public derive<expr,unary>
   {
-    protected:
+    public:
       expr_ptr expression;
       int op;
-    public:
       unary(int o, expr * const e)
         : op(o), expression(e)
       {}
@@ -143,13 +113,12 @@ namespace ast
         stream << "unary <" << op << ">";
       }
   };
-  class binary : public expr
+  class binary : public derive<expr,binary>
   {
-    protected:
+    public:
       expr_ptr lhs;
       expr_ptr rhs;
       int op;
-    public:
       binary(int o, expr * const l, expr * const r)
         : op(o), lhs(l), rhs(r)
       {}
@@ -157,18 +126,11 @@ namespace ast
       {
         stream << "binary <" << op << ">";
       }
-      virtual void accept(base_visitor & v)
-      {
-        accept_and_do(*this,v,
-            [&v,this]() {lhs->accept(v); rhs->accept(v);});
-      }
-
   };
-  class boolean : public expr
+  class boolean : public derive<expr,boolean>
   {
-    protected:
-      bool value;
     public:
+      bool value;
       boolean(bool v)
         : value(v)
       {}
@@ -177,11 +139,10 @@ namespace ast
         stream << "boolean <" << value << ">";
       }
   };
-  class numeric : public expr
+  class numeric : public derive<expr,numeric>
   {
-    protected:
-      double value;
     public:
+      double value;
       numeric(std::string * const text)
         : value(std::stod(*text))
       {
@@ -192,11 +153,10 @@ namespace ast
         stream << "numeric <" << value << ">";
       }
   };
-  class decor : public expr
+  class decor : public derive<expr,decor>
   {
-    protected:
-      string_ptr value;
     public:
+      string_ptr value;
       decor(std::string const * const text)
         : value(text) //TODO
       {}
@@ -205,13 +165,12 @@ namespace ast
         stream << "decor <" << *value << ">";
       }
   };
-  class conditional : public expr
+  class conditional : public derive<expr,conditional>
   {
-    protected:
+    public:
       expr_ptr condition;
       expr_ptr truecase;
       expr_ptr falsecase;
-    public:
       conditional(expr * const c, expr * const t, expr * const f)
         : condition(c), truecase(t), falsecase(f)
       {}
@@ -220,12 +179,11 @@ namespace ast
         stream << "conditional";
       }
   };
-  class declaration : public expr
+  class declaration : public derive<expr,declaration>
   {
-    protected:
+    public:
       expr_ptr expression;
       string_ptr name;
-    public:
       declaration(std::string const * const text, expr * const e)
         : name(text), expression(e)
       {}
@@ -234,11 +192,10 @@ namespace ast
         stream << "declaration <" << *name << ">";
       }
   };
-  class call : public expr
+  class call : public derive<expr,call>
   {
-    protected:
-      string_ptr name;
     public:
+      string_ptr name;
       call(std::string const * const text)
         : name(text)
       {}
@@ -247,11 +204,10 @@ namespace ast
         stream << "call <" << *name << ">";
       }
   };
-  class block : public expr
+  class block : public derive<expr,block>
   {
-    protected:
-      ptr<std::list<expr_ptr>> expressions;
     public:
+      ptr<std::list<expr_ptr>> expressions;
       block(std::list<expr_ptr> * const e)
         : expressions(e)
       {}
@@ -262,391 +218,100 @@ namespace ast
   };
 
 
-  template<typename T> class print_description_visitor_for : public visitor_for<T>
-  {
-    public:
-      virtual void handle_expr(expr &, std::function<void()> const &) = 0;
-      virtual void visit_and_do(T & e, std::function<void()> const & a)
-      {
-        handle_expr(e,a);
-      }
-  };
-
-  class print_description_tree_visitor : public print_description_visitor_for<expr>,
-                                         public print_description_visitor_for<module>,
-                                         public print_description_visitor_for<declaration>
+  class description_printer : public can_visit<expr>,
+                              public can_visit<declaration>,
+                              public can_visit<block>,
+                              public can_visit<conditional>,
+                              public can_visit<binary>,
+                              public can_visit<unary>,
+                              public can_visit<module>,
+                              public can_visit<group>
   {
     protected:
-      int indent = 0;
-    public:
-      virtual void fail(void)
-      {
-        std::cout << "visitor failed" << std::endl;
-      }
-      virtual void handle_expr(expr & e, std::function<void()> const & a)
+      int indent;
+      std::ostream & stream;
+      void print(expr & e)
       {
         for (int i = 0; i < indent; i++)
         {
-          std::cout << " ";
+          stream << "| ";
         }
-        std::cout << "|- ";
-        e.print_description_to(std::cout);
-        std::cout << std::endl;
+        stream << "|- ";
+        e.print_description_to(stream);
+        stream << std::endl;
+      }
+    public:
+      description_printer(std::ostream & s)
+        : stream(s), indent(0)
+      {
+      }
+      void unknown_visitable(base_visitable * b)
+      {
+        stream << "unknown" << std::endl;
+      }
+      void visit(expr & e)
+      {
+        print(e);
+      }
+      void visit(declaration & e)
+      {
+        print(e);
         indent++;
-        a();
+        e.expression->accept(*this);
+        indent--;
+      }
+      void visit(block & e)
+      {
+        print(e);
+        indent++;
+        auto list = e.expressions.get();
+        for(auto i = list->cbegin(); i != list->cend(); i++)
+        {
+          i->get()->accept(*this);
+        }
+        indent--;
+      }
+      void visit(conditional & e)
+      {
+        print(e);
+        indent++;
+        e.condition->accept(*this);
+        e.truecase->accept(*this);
+        e.falsecase->accept(*this);
+        indent--;
+      }
+      void visit(binary & e)
+      {
+        print(e);
+        indent++;
+        e.lhs->accept(*this);
+        e.rhs->accept(*this);
+        indent--;
+      }
+      void visit(unary & e)
+      {
+        print(e);
+        indent++;
+        e.expression->accept(*this);
+        indent--;
+      }
+      void visit(module & e)
+      {
+        print(e);
+        indent++;
+        e.expression->accept(*this);
+        indent--;
+      }
+      void visit(group & e)
+      {
+        print(e);
+        indent++;
+        e.expression->accept(*this);
         indent--;
       }
   };
 }
 
-
-/*
-
-namespace ast
-{
-  class expr
-  {
-    public:
-      virtual ~expr() {};
-  };
-
-  class bool_expr : public expr
-  {
-  };
-  class num_expr : public expr
-  {
-  };
-  class decor_expr : public expr
-  {
-  };
-  class ival_expr : public expr
-  {
-  };
-
-  class bool_literal : public bool_expr
-  {
-    protected:
-      bool const value;
-    public:
-      bool_literal(bool const v)
-        : value(v)
-      {}
-
-  };
-
-  class num_literal : public num_expr
-  {
-    protected:
-      double const value;
-    public:
-      num_literal(std::string const * const text)
-        : value(std::stod(*text))
-      {}
-  };
-
-  class decor_literal : public decor_expr
-  {
-    protected:
-      std::unique_ptr<std::string const> name;
-    public:
-      decor_literal(std::string const * const text)
-        : name(text)
-      {}
-  };
-
-
-  template<typename T> class conditional
-  {
-    protected:
-      std::unique_ptr<bool_expr const> condition;
-      std::unique_ptr<T const> truecase;
-      std::unique_ptr<T const> falsecase;
-    public:
-      conditional(
-          bool_expr const * const c,
-          T const * const t,
-          T const * const f
-          )
-        : condition(c), truecase(t), falsecase(f)
-      {
-      }
-  };
-
-  class bool_conditional : public conditional<bool_expr>
-                         , public bool_expr
-  {
-    public:
-      using conditional<bool_expr>::conditional;
-  };
-  class num_conditional : public conditional<num_expr>
-                        , public num_expr
-  {
-    public:
-      using conditional<num_expr>::conditional;
-  };
-  class decor_conditional : public conditional<decor_expr>
-                          , public decor_expr
-  {
-    public:
-      using conditional<decor_expr>::conditional;
-  };
-  class ival_conditional : public conditional<ival_expr>
-                         , public ival_expr
-  {
-    public:
-      using conditional<ival_expr>::conditional;
-  };
-
-
-  template<typename T> class termseq
-  {
-    protected:
-      std::unique_ptr<std::list<std::unique_ptr<ast::expr const>>> expressions;
-      std::unique_ptr<T const> last_expression;
-    public:
-      termseq(
-          std::list<std::unique_ptr<ast::expr const>> * const l,
-          T const * const e
-          )
-        : expressions(l), last_expression(e)
-      {
-      }
-  };
-  class bool_termseq : public termseq<bool_expr>
-                     , public bool_expr
-  {
-    public:
-      using termseq<bool_expr>::termseq;
-  };
-  class num_termseq : public termseq<num_expr>
-                     , public num_expr
-  {
-    public:
-      using termseq<num_expr>::termseq;
-  };
-  class decor_termseq : public termseq<decor_expr>
-                     , public decor_expr
-  {
-    public:
-      using termseq<decor_expr>::termseq;
-  };
-  class ival_termseq : public termseq<ival_expr>
-                     , public ival_expr
-  {
-    public:
-      using termseq<ival_expr>::termseq;
-  };
-
-
-  template<typename T> class binary
-  {
-    protected:
-      int op;
-      std::unique_ptr<T const> lhs;
-      std::unique_ptr<T const> rhs;
-    public:
-      binary(
-          int o,
-          T const * const l,
-          T const * const r
-          )
-        : op(o), lhs(l), rhs(r)
-      {
-      }
-  };
-  template<typename T> class compare : public binary<T>
-                                     , public bool_expr
-  {
-    public:
-      using binary<T>::binary;
-  };
-  class bool_binary : public binary<bool_expr>
-                    , public bool_expr
-  {
-    public:
-      using binary<bool_expr>::binary;
-  };
-  class num_binary : public binary<num_expr>
-                   , public num_expr
-  {
-    public:
-      using binary<num_expr>::binary;
-  };
-  class ival_binary : public binary<ival_expr>
-                    , public ival_expr
-  {
-    public:
-      using binary<ival_expr>::binary;
-  };
-  class num_compare : public compare<num_expr>
-  {
-    public:
-      using compare<num_expr>::compare;
-  };
-  class ival_compare : public compare<ival_expr>
-  {
-    public:
-      using compare<ival_expr>::compare;
-  };
-
-
-}
-*/
-
-
-
-/*
-class Expr
-{
-  public:
-    virtual ~Expr();
-};
-
-
-
-class Identifier
-{
-  public:
-    std::unique_ptr<std::string const> name;
-
-    Identifier(std::string const * const text)
-      : name(text)
-    {
-      std::cout << "[CREATE] Identifier \"" << *name << "\"" << std::endl;
-    }
-};
-
-class Numeric : public Expr
-{
-  public:
-    double value;
-
-    Numeric(std::string const * const text)
-    {
-      value = std::stod(*text);
-      std::cout << "[CREATE] Numeric " << value << std::endl;
-    }
-};
-
-class Decor : public Expr
-{
-  public:
-    std::unique_ptr<std::string const> value;
-
-    Decor(std::string const * const text)
-      : value(text)
-    {
-      std::cout << "[CREATE] Decor \"" << *value << "\"" << std::endl;
-    }
-};
-
-class TypeIdentifier
-{
-  public:
-    std::unique_ptr<std::string const> name;
-
-    TypeIdentifier(std::string const * const text)
-      : name(text)
-    {
-      std::cout << "[CREATE] TypeIdentifier " << *name << std::endl;
-    }
-};
-
-
-class UnaryOperation : public Expr
-{
-  public:
-    int op;
-    std::unique_ptr<Expr const> expression;
-
-    UnaryOperation(int o, Expr const * const e)
-      : op(o), expression(e)
-    {
-      std::cout << "[CREATE] Unary operation #" << op << std::endl;
-    }
-};
-
-class BinaryOperation : public Expr
-{
-  public:
-    int op;
-    std::unique_ptr<Expr const> lhs;
-    std::unique_ptr<Expr const> rhs;
-
-    BinaryOperation(
-        int o,
-        Expr const * const l,
-        Expr const * const r)
-      : op(o), lhs(l), rhs(r)
-    {
-      std::cout << "[CREATE] Binary operation #" << op << std::endl;
-    }
-};
-
-class Conditional : public Expr
-{
-  public:
-    std::unique_ptr<Expr const> condition;
-    std::unique_ptr<Expr const> truecase;
-    std::unique_ptr<Expr const> falsecase;
-
-    Conditional(
-        Expr const * const c,
-        Expr const * const t,
-        Expr const * const f)
-      : condition(c), truecase(t), falsecase(f)
-    {
-      std::cout << "[CREATE] Conditional" << std::endl;
-    }
-};
-
-class Declaration : public Expr
-{
-  public:
-    std::unique_ptr<Identifier const> id;
-    std::unique_ptr<TypeIdentifier const> typeidentifier;
-    std::unique_ptr<Expr const> value;
-
-    Declaration(
-        TypeIdentifier const * const t,
-        Identifier const * const i,
-        Expr const * const v)
-      : id(i), typeidentifier(t), value(v)
-    {
-      std::cout << "[CREATE] Declaration of " << *(id->name) << std::endl;
-    }
-};
-
-class Call : public Expr
-{
-  public:
-    std::unique_ptr<Identifier const> name;
-
-    Call(Identifier const * const n)
-      : name(n)
-    {
-      std::cout << "[CREATE] Call for " << *(name->name) << std::endl;
-    }
-};
-
-
-class Block : public Expr
-{
-  public:
-    std::list<std::unique_ptr<Expr const>> expressions;
-
-    Block()
-    {
-      std::cout << "[CREATE] Block" << std::endl;
-    }
-
-    void add_expression(Expr const * const e)
-    {
-      expressions.emplace_back(e);
-      std::cout << "--Block: Size = " << expressions.size() << std::endl;
-    }
-};
-*/
 
 #endif
 
