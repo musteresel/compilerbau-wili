@@ -1,29 +1,51 @@
+%define api.pure full
+%locations
+%defines
+%error-verbose
+%parse-param { wili_context & context }
+%lex-param { void * scanner }
+
+
+%define api.value.type {union YYSTYPE}
+
+
 %{
 #include "ast.hpp"
 #include <string>
 #include <list>
 #include <memory>
 
-extern int yylex();
-void yyerror(const char * s) { std::cout << "//Error// " << s << std::endl; }
+#include "parser.hpp"
+#include "parser-yystype.hpp"
+extern int yylex(YYSTYPE * lvalp, YYLTYPE * llocp, void * scanner);
+void yyerror(YYLTYPE * locp, wili_context & context, const char * s) 
+{ std::cout << "//Error// " << s << std::endl; }
+#define scanner context.scanner
+
 
 ast::module * program;
 
-%}
 
-%union {
+/*
+typedef struct
+{
+  int first_line;
+  int first_column;
+  int last_line;
+  int last_column;
+} YYLTYPE;
+*/
+
+%}
+/*
+%union YYSTYPE {
   ast::module * module;
   ast::expr * expr;
   std::list<ast::expr_ptr> * expr_list;
   std::string * string;
   int token;
 }
-
-
-
-
-%nonassoc <token> P_UNUSED T_TYPE
-
+*/
 %type <module> module
 %type <expr> expr
 %type <expr_list> expr_list

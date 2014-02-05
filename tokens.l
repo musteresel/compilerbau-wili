@@ -1,4 +1,6 @@
-/* We scan only a single file at once */
+%option reentrant
+%option bison-bridge
+%option bison-locations
 %option noyywrap
 
 
@@ -19,6 +21,9 @@
 #include "parser.hpp"
 
 
+#include "parser-yystype.hpp"
+
+
 /** Macro for code when a terminal token is found.
  *
  * ret is the tokens define name.
@@ -28,7 +33,7 @@
   { \
     std::cerr << "[LEX] " #ret << std::endl; \
   } \
-  yylval.token = ret; \
+  yylval->token = ret; \
   return ret; \
   }
 
@@ -38,10 +43,10 @@
  * ret is the token code to return. The string is saved to yylval.
 */
 #define STRING_TERMINAL(ret) { \
-	yylval.string = new std::string(yytext, yyleng); \
+	yylval->string = new std::string(yytext, yyleng); \
   if (flex_debug) \
   { \
-    std::cerr << "[LEX] " #ret ": \"" << *yylval.string << "\"" << std::endl; \
+    std::cerr << "[LEX] " #ret ": \"" << *yylval->string << "\"" << std::endl; \
   } \
   return ret; \
   }
@@ -73,7 +78,6 @@ char flex_debug = 1;
 \)                                     TOKEN_TERMINAL(T_RPAR);
 
 ><                                     TOKEN_TERMINAL(T_ICONSTRUCT);
-\|<                                    TOKEN_TERMINAL(T_ICONSTRUCT_UNARY);
 
 \+(?i:n(ext)?)                         TOKEN_TERMINAL(T_FAN);
 \+(?i:d(own)?)                         TOKEN_TERMINAL(T_FAD);
@@ -140,7 +144,6 @@ not                                    TOKEN_TERMINAL(T_NOT);
 true                                   TOKEN_TERMINAL(T_TRUE);
 false                                  TOKEN_TERMINAL(T_FALSE);
 
-::(Decor|Float|(Decor)?Ival|Bool)      STRING_TERMINAL(T_TYPE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [+-]?(([0-9]*(\.[0-9]+)?([eE][+-]?[0-9]+)?)|infinite) STRING_TERMINAL(T_FLOAT);
 [a-zA-Z_][a-zA-Z0-9_]*                 {
@@ -155,6 +158,13 @@ COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 
 
 %%
-/* Nothing here */
+void wili_context::init_scanner()
+{
+	yylex_init(&scanner);
+}
+void wili_context::destroy_scanner()
+{
+	yylex_destroy(scanner);
+}
 
 

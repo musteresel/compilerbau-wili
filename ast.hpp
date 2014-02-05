@@ -11,6 +11,25 @@
 using namespace cav;
 
 
+class wili_context
+{
+  protected:
+    void init_scanner();
+    void destroy_scanner();
+  public:
+    void * scanner;
+
+    wili_context()
+    {
+      init_scanner();
+    }
+    ~wili_context()
+    {
+      destroy_scanner();
+    }
+};
+#include "parser.hpp"
+
 namespace ast
 {
   class expr;
@@ -23,13 +42,38 @@ namespace ast
 
 namespace ast
 {
-  enum type
+  /*
+     enum type
+     {
+     UNKNOWN,
+     BOOLEAN,
+     NUMERIC,
+     DECOR,
+     INTERVAL
+     };*/
+
+  class type
   {
-    UNKNOWN,
-    BOOLEAN,
-    NUMERIC,
-    DECOR,
-    INTERVAL
+  };
+  class simple : public type
+  {
+    public:
+      enum class id : char
+    {
+      UNKNOWN,
+      BOOLEAN,
+      NUMERIC,
+      DECOR,
+      IVAL,
+      DIVAL
+    }_id;
+  };
+  class calling : public type
+  {
+    protected:
+      type arg;
+      type ret;
+    public:
   };
 }
 
@@ -234,9 +278,9 @@ namespace ast
       {
         for (int i = 0; i < indent; i++)
         {
-          stream << "| ";
+          stream << "|   ";
         }
-        stream << "|- ";
+        stream << "|-- ";
         e.print_description_to(stream);
         stream << std::endl;
       }
