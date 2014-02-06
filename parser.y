@@ -1,51 +1,51 @@
-%define api.pure full
 %locations
 %defines
 %error-verbose
-%parse-param { wili_context & context }
-%lex-param { void * scanner }
 
 
+%define api.pure true
 %define api.value.type {union YYSTYPE}
 
 
+%code requires {
+namespace wili
+{
+  namespace parser { class unit; }
+}
+}
+
+
+%parse-param { wili::parser::unit & context }
+%lex-param { void * scanner }
+
+
 %{
-#include "ast.hpp"
 #include <string>
 #include <list>
-#include <memory>
+
 
 #include "parser.hpp"
 #include "parser-yystype.hpp"
-extern int yylex(YYSTYPE * lvalp, YYLTYPE * llocp, void * scanner);
-void yyerror(YYLTYPE * locp, wili_context & context, const char * s) 
-{ std::cout << "//Error// " << s << std::endl; }
-#define scanner context.scanner
 
 
-ast::module * program;
+#include "ast.hpp"
+#include "parser-unit.hpp"
 
 
-/*
-typedef struct
+using namespace wili;
+
+
+int yylex(YYSTYPE * lvalp, YYLTYPE * llocp, void * scanner);
+void yyerror(YYLTYPE * locp, wili::parser::unit & context, const char * s) 
 {
-  int first_line;
-  int first_column;
-  int last_line;
-  int last_column;
-} YYLTYPE;
-*/
-
-%}
-/*
-%union YYSTYPE {
-  ast::module * module;
-  ast::expr * expr;
-  std::list<ast::expr_ptr> * expr_list;
-  std::string * string;
-  int token;
+  context.log_error(s);
 }
-*/
+
+
+#define scanner context.get_scanner()
+%}
+
+
 %type <module> module
 %type <expr> expr
 %type <expr_list> expr_list
@@ -78,140 +78,142 @@ typedef struct
 %nonassoc P_NUM_UNARY
 %nonassoc P_GROUP T_LPAR T_RPAR
 
+
 %start module
+
 
 %%
 module :
-T_MODULE {ast::begin_declaration();}
-T_IDENTIFIER T_ASSIGN {ast::end_declaration();} expr
-{$$ = ast::create<ast::module>($3,$6); program = $$;}
+T_MODULE {context.begin_declaration();}
+T_IDENTIFIER T_ASSIGN {context.end_declaration();} expr
+{$$ = context.create<ast::module>($3,$6);}
 ;
 
 expr :
 /* Declaration of a function or variable */
-T_DECLARE {ast::begin_declaration();} 
-T_IDENTIFIER T_ASSIGN {ast::end_declaration();} expr
-{$$ = ast::create<ast::declaration>($3,$6);}
+T_DECLARE {context.begin_declaration();} 
+T_IDENTIFIER T_ASSIGN {context.end_declaration();} expr
+{$$ = context.create<ast::declaration>($3,$6);}
 
 |
 /* Block with an expression list */
 T_LBRA expr_list T_RBRA
-{$$ = ast::create<ast::block>($2);}
+{$$ = context.create<ast::block>($2);}
 
 |
 /* Conditional evaluation */
 T_IF expr T_THEN expr T_ELSE expr T_FI
-{$$ = ast::create<ast::conditional>($2,$4,$6);}
+{$$ = context.create<ast::conditional>($2,$4,$6);}
 
 |
 /* Boolean binary operation */
 expr op_andor expr %prec P_BINARY_BOOL
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Boolean negation operation */
 T_NOT expr
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* (Un)Equality operations */
 expr op_eqne expr %prec P_EQUALITY
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Compare operations */
 expr op_compare expr %prec P_COMPARE
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Interval addition and subtraction */
 expr op_ival_addsub expr %prec P_IVAL_ADDSUB
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Interval multiplication and division */
 expr op_ival_muldiv expr %prec P_IVAL_MULDIV
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Interval decoration operation */
 expr T_IDE expr
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Extract / get decoration from a given interval */
 T_IGD expr
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* Get upper or lower bound of interval */
 op_bounds expr %prec P_BOUNDS
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* Remove decoration from interval */
 T_IUD expr
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* Unary negation of an interval */
 T_IS expr %prec P_IVAL_UNARY
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* Construction of an interval */
 expr T_ICONSTRUCT expr
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Unary construction of an interval */
 T_ICONSTRUCT expr %prec P_IVAL_CONSTRUCT_UNARY
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* Addition and subtraction of numbers */
 expr op_num_addsub expr %prec P_NUM_ADDSUB
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Multiplication and division of numbers */
 expr op_num_muldiv expr %prec P_NUM_MULDIV
-{$$ = ast::create<ast::binary>($2,$1,$3);}
+{$$ = context.create<ast::binary>($2,$1,$3);}
 
 |
 /* Call of a previously declared function / variable */
 T_CALL
-{$$ = ast::create<ast::call>($1);}
+{$$ = context.create<ast::call>($1);}
 
 |
 /* Unary operation (negation) of numbers */
 op_num_unary expr %prec P_NUM_UNARY
-{$$ = ast::create<ast::unary>($1,$2);}
+{$$ = context.create<ast::unary>($1,$2);}
 
 |
 /* Grouping of an expression */
 T_LPAR expr T_RPAR
-{$$ = ast::create<ast::group>($2);}
+{$$ = context.create<ast::group>($2);}
 
 |
 /* Float (number) literal */
 T_FLOAT
-{$$ = ast::create<ast::numeric>($1);}
+{$$ = context.create<ast::numeric>($1);}
 
 |
 /* Decoration literal */
 T_DECOR
-{$$ = ast::create<ast::decor>($1);}
+{$$ = context.create<ast::decor>($1);}
 
 |
 /* Boolean true literal */
 T_TRUE
-{$$ = ast::create<ast::boolean>(true);}
+{$$ = context.create<ast::boolean>(true);}
 
 |
 /* Boolean false literal */
 T_FALSE
-{$$ = ast::create<ast::boolean>(false);}
+{$$ = context.create<ast::boolean>(false);}
 ;
 
 
@@ -250,5 +252,14 @@ op_num_unary : T_FSN | T_FSD | T_FSU;
 
 
 %%
-/* empty */
+namespace wili
+{
+  namespace parser
+  {
+    void unit::run_parser()
+    {
+      yyparse(*this);
+    }
+  }
+}
 

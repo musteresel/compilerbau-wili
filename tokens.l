@@ -2,25 +2,18 @@
 %option bison-bridge
 %option bison-locations
 %option noyywrap
-
+%option extra-type="wili::parser::unit*"
 
 %{
-/* Needed to act on cerr */
-#include <iostream>
+#include "parser-unit.hpp"
 
 
 /* Needed to create new strings */ 
 #include <string>
 
 
-/* Needed to create ast nodes */
-#include "ast.hpp"
-
-
 /* Needed for token definitions */
 #include "parser.hpp"
-
-
 #include "parser-yystype.hpp"
 
 
@@ -29,10 +22,7 @@
  * ret is the tokens define name.
 */
 #define TOKEN_TERMINAL(ret) { \
-  if (flex_debug) \
-  { \
-    std::cerr << "[LEX] " #ret << std::endl; \
-  } \
+	yyextra->log_terminal(#ret); \
   yylval->token = ret; \
   return ret; \
   }
@@ -43,33 +33,20 @@
  * ret is the token code to return. The string is saved to yylval.
 */
 #define STRING_TERMINAL(ret) { \
-	yylval->string = new std::string(yytext, yyleng); \
-  if (flex_debug) \
-  { \
-    std::cerr << "[LEX] " #ret ": \"" << *yylval->string << "\"" << std::endl; \
-  } \
+	yylval->string = yyextra->create<std::string>(yytext, yyleng); \
+	yyextra->log_terminal(#ret, yylval->string); \
   return ret; \
   }
 
 
-/** Line counting
- *
- * This variable is increased whenever a newline is encountered.
-*/
-int linenum = 1;
-
-
-/** Debug control
- *
- * When set to nonzero, debug output will be printed to cerr.
-*/
-char flex_debug = 1;
+#define YY_INPUT(buf,result,max_size) \
+	yyextra->scanner_input(buf,result,max_size);
 %}
 
 
 %%
 [ \t]                                  ;
-\n                                     ++linenum;
+\n                                     ;
 
 ;                                      TOKEN_TERMINAL(T_BSEP);
 \{                                     TOKEN_TERMINAL(T_LBRA);
@@ -147,7 +124,7 @@ false                                  TOKEN_TERMINAL(T_FALSE);
 COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 [+-]?(([0-9]*(\.[0-9]+)?([eE][+-]?[0-9]+)?)|infinite) STRING_TERMINAL(T_FLOAT);
 [a-zA-Z_][a-zA-Z0-9_]*                 {
-    if (ast::in_declaration()) 
+    if (yyextra->in_declaration()) 
       { STRING_TERMINAL(T_IDENTIFIER); }
     else
       { STRING_TERMINAL(T_CALL); }
@@ -158,13 +135,32 @@ COM|DAC|DEF|TRV|ILL                    STRING_TERMINAL(T_DECOR);
 
 
 %%
-void wili_context::init_scanner()
+namespace wili
 {
-	yylex_init(&scanner);
+	namespace parser
+	{
+		void unit::init_scanner()
+		{
+			yylex_init(&scanner);
+			yyset_extra(this,scanner);
+		}
+		void unit::destroy_scanner()
+		{
+			yylex_destroy(scanner);
+		}
+		void unit::scanner_input(char * const buffer,
+				long unsigned int & result, long unsigned int const max_size)
+		{
+			if (input.good())
+			{
+				input.read(buffer,max_size);
+				result = input.gcount();
+			}
+			else
+			{
+				result = YY_NULL;
+			}
+		}
+	}
 }
-void wili_context::destroy_scanner()
-{
-	yylex_destroy(scanner);
-}
-
 

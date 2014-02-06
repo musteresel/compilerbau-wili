@@ -2,7 +2,7 @@
 all: wili parser.output
 .PHONY: clean
 
-wili: tokens.cpp main.cpp parser.cpp ast.hpp ast.cpp
+wili: tokens.cpp main.cpp parser.cpp ast.hpp ast.cpp parser-unit.cpp
 	g++ -std=c++11 -o $@ $^
 
 parser.cpp parser.hpp parser.output: parser.y ast.hpp

@@ -1,5 +1,13 @@
 #ifndef PARSER_YYSTYPE_HEADER
 #define PARSER_YYSTYPE_HEADER 1
+#include <list>
+#include <string>
+
+
+#include "ast.hpp"
+using namespace wili;
+
+
 union YYSTYPE
 {
   ast::module * module;
@@ -8,4 +16,7 @@ union YYSTYPE
   std::string * string;
   int token;
 };
+
+
 #endif
+

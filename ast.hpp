@@ -10,26 +10,10 @@
 #include "climbing-acyclic-visitor.hpp"
 using namespace cav;
 
-
-class wili_context
-{
-  protected:
-    void init_scanner();
-    void destroy_scanner();
-  public:
-    void * scanner;
-
-    wili_context()
-    {
-      init_scanner();
-    }
-    ~wili_context()
-    {
-      destroy_scanner();
-    }
-};
 #include "parser.hpp"
 
+namespace wili
+{
 namespace ast
 {
   class expr;
@@ -80,20 +64,6 @@ namespace ast
 
 namespace ast
 {
-  void begin_declaration(void);
-  void end_declaration(void);
-  bool in_declaration(void);
-}
-
-
-namespace ast
-{
-  template<typename T, typename... ARGS> T * create(ARGS... args)
-  {
-    T * node = new T(args...);
-    std::cerr << "[AST] " << typeid(T).name() << std::endl;
-    return node;
-  }
 }
 
 
@@ -355,7 +325,7 @@ namespace ast
       }
   };
 }
-
+}
 
 #endif
 
