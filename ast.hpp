@@ -8,6 +8,7 @@
 #include <list>
 
 #include "climbing-acyclic-visitor.hpp"
+#include "cav-helper.hpp"
 using namespace cav;
 
 #include "parser.hpp"
@@ -60,22 +61,6 @@ namespace ast
     public:
   };
 }
-
-
-namespace ast
-{
-}
-
-
-template<typename P, typename N> class derive : public P, public is_visitable<N>
-{
-  public:
-    using parent_visitable = P;
-    void accept(base_visitor & visitor)
-    {
-      is_visitable<N>::accept(visitor);
-    }
-};
 
 namespace ast
 {
