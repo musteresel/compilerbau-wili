@@ -11,7 +11,7 @@ namespace wili
 {
   namespace ast
   {
-    class unary : public derive<expr,unary>
+    class unary : public cav::derive<expr,unary>
     {
       public:
         expr::ptr expression;
@@ -28,7 +28,7 @@ namespace wili
     };
 
 
-    class binary : public derive<expr,binary>
+    class binary : public cav::derive<expr,binary>
     {
       public:
         expr::ptr lhs;

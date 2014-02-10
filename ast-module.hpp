@@ -13,10 +13,10 @@ namespace wili
 {
   namespace ast
   {
-    class module : public derive<expr,module>
+    class module : public cav::derive<expr,module>
     {
       public:
-        std::unique_ptr<std::string> name;
+        std::unique_ptr<std::string const> name;
         expr::ptr expression;
 
 

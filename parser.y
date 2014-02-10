@@ -221,7 +221,7 @@ T_FALSE
 expr_list :
 /* Single expression can be considered as list */
 expr
-{$$ = new std::list<ast::expr_ptr>();
+{$$ = new std::list<ast::expr::ptr>();
  $$->push_back(ast::expr_ptr($1));
 }
 

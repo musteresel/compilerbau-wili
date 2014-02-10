@@ -12,7 +12,7 @@ union YYSTYPE
 {
   ast::module * module;
   ast::expr * expr;
-  std::list<ast::expr_ptr> * expr_list;
+  std::list<ast::expr::ptr> * expr_list;
   std::string * string;
   int token;
 };

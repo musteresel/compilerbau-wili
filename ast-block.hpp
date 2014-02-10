@@ -1,6 +1,8 @@
 #ifndef _WILI_AST_BLOCK_HEADER_
 #define _WILI_AST_BLOCK_HEADER_ 1
 #include <ostream>
+#include <memory>
+#include <list>
 
 
 #include "cav-helper.hpp"
@@ -11,11 +13,11 @@ namespace wili
 {
   namespace ast
   {
-    class block : public derive<expr,block>
+    class block : public cav::derive<expr,block>
     {
       public:
-        ptr<std::list<expr_ptr>> expressions;
-        block(std::list<expr_ptr> * const e)
+        std::unique_ptr<std::list<expr::ptr>> expressions;
+        block(std::list<expr::ptr> * const e)
           : expressions(e)
         {}
         virtual void print_description_to(std::ostream & stream) const

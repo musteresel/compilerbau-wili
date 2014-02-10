@@ -13,7 +13,7 @@ namespace wili
 {
   namespace ast
   {
-    class boolean : public derive<expr,boolean>
+    class boolean : public cav::derive<expr,boolean>
     {
       public:
         bool value;
@@ -29,13 +29,13 @@ namespace wili
     };
 
 
-    class numeric : public derive<expr,numeric>
+    class numeric : public cav::derive<expr,numeric>
     {
       public:
         double value;
 
 
-        numeric(std::string * const text)
+        numeric(std::string const * const text)
           : value(std::stod(*text))
         {
           delete text;
@@ -47,10 +47,10 @@ namespace wili
     };
 
 
-    class decor : public derive<expr,decor>
+    class decor : public cav::derive<expr,decor>
     {
       public:
-        std::unique_ptr<std::string> value;
+        std::unique_ptr<std::string const> value;
         decor(std::string const * const text)
           : value(text) //TODO
         {}

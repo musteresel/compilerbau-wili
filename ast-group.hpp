@@ -11,7 +11,7 @@ namespace wili
 {
   namespace ast
   {
-    class group : public derive<expr,group>
+    class group : public cav::derive<expr,group>
     {
       public:
         expr::ptr expression;

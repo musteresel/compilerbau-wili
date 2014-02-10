@@ -1,5 +1,6 @@
 #ifndef WILI_AST_HEADER
 #define WILI_AST_HEADER 1
+#include "ast-module.hpp"
 #include "ast-expression.hpp"
 #include "ast-calling.hpp"
 #include "ast-operators.hpp"

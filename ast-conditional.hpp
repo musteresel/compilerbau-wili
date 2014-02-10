@@ -11,7 +11,7 @@ namespace wili
 {
   namespace ast
   {
-    class conditional : public derive<expr,conditional>
+    class conditional : public cav::derive<expr,conditional>
     {
       public:
         expr::ptr condition;

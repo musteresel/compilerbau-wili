@@ -4,20 +4,20 @@
 #include <memory>
 
 
-#include "climbig-acyclic-visitor.hpp"
+#include "climbing-acyclic-visitor.hpp"
 
 
 namespace wili
 {
   namespace ast
   {
-    class expr : public is_visitable<expr>
+    class expr : public cav::is_visitable<expr>
     {
       public:
         using ptr = std::shared_ptr<expr>;
 
 
-        using parent_visitable = base_visitable;
+        using parent_visitable = cav::base_visitable;
         virtual ~expr() {};
         virtual void print_description_to(std::ostream & stream) const
         {
